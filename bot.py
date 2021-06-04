@@ -3,6 +3,8 @@ import telebot
 import users
 import screens
 
+import services
+
 class Bot:
     def __init__(self):
         self.token = '1229678012:AAELEl3SUr3arUWH5sQD2jP6njscOxGZS_c'
@@ -12,7 +14,7 @@ class Bot:
     def initiate(self):
         @self.bot.message_handler(commands = ['start'])
         def start_message_oper(message):
-            pass
+            self.__start_message(message)
 
         @self.bot.message_handler(content_types = ['text'])
         def message_oper(message):
@@ -24,16 +26,45 @@ class Bot:
 
         self.bot.polling(none_stop = True, interval = 0)
 
-    def __start_message(self, message):
-        self.Users
+    def send_screen(self, user, screen):
+        text, buttons = screen
+        self.bot.send_message(chat_id = user.tg_id, text = text, reply_markup = buttons)
 
+    def __start_message(self, message):
+        user = self.Users.tg_identification(message)
+        user.position = 'first_welcome'
+        self.send_screen(user, screens.welcome('main'))
 
     def __message(self, message):
         user = self.Users.tg_identification(message)
         if user.ban:
             return
 
-        print(message.chat.first_name)
+        if user.position == 'first_welcome':
+            self.get_email(user, message.text)
+        elif user.position == 'second_welcome':
+            self.get_phone(user, message.text)
+
+    def get_email(self, user, text):
+        if not services.check_email(text):
+            self.send_screen(user, screens.welcome('error_format'))
+        elif not self.Users.check('mail', text):
+            self.send_screen(user, screens.welcome('error_in_base'))
+        else:
+            user.mail = text
+            user.position = 'second_welcome'
+            self.send_screen(user, screens.welcome_second('main'))
+
+    def get_phone(self, user, text):
+        if not services.check_phone(text):
+            self.send_screen(user, screens.welcome_second('error_format'))
+        elif not self.Users.check('phone', text):
+            self.send_screen(user, screens.welcome_second('error_in_base'))
+        else:
+            user.phone = text
+            user.position = 'main'
+            self.send_screen(user, screens.main_screen('main'))
+            self.Users.save()
 
 Bot = Bot()
 Bot.initiate()

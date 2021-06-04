@@ -1,5 +1,6 @@
 import json
-import string
+
+import services
 
 
 class Users:
@@ -19,25 +20,40 @@ class Users:
 
     def save(self):
         _users = []
-        for user in self.__Users:
+        for user in self.__Users.values():
             _users.append(user.to_json())
 
         with open('base/users.json', 'w') as file:
-            file.write()
+            file.write(json.dumps(_users))
 
     def tg_identification(self, message):
-        if message.id in self.__Users:
-            _user = self.__Users[message.id]
+        if message.chat.id in self.__Users:
+            _user = self.__Users[message.chat.id]
         else:
             _user = User()
-            _user.tg_id = message.id
+            _user.tg_id = message.chat.id
+            self.__Users.update({message.chat.id: _user})
 
         _user.check_tg_data(message)
-        return self.__Users[message.id]
+        return self.__Users[message.chat.id]
+
+    def check(self, key, value):
+        if key == 'mail':
+            for i in self.__Users.values():
+                if i.mail == value:
+                    return False
+
+        elif key == 'phone':
+            for i in self.__Users.values():
+                if i.phone == value:
+                    return False
+
+        return True
 
 
 class User:
     def __init__(self):
+        # data
         self.tg_id = ''
         self.first_name = ''
         self.last_name = ''
@@ -45,19 +61,46 @@ class User:
 
         self.trade_username = ''
 
+        # tg service
+        self.position = ''
+        self.pop_data = {}
+
+        # service
+        self.mail = ''
+        self.phone = ''
         self.ban = False
 
     def load_from_json(self, _json):
+        self.tg_id = _json['tg_id']
+        self.first_name = _json['first_name']
+        self.last_name = _json['last_name']
+        self.tg_username = _json['tg_username']
+        self.trade_username = _json['trade_username']
+        self.ban = _json['ban']
+        self.pop_data = _json['pop_data']
+        self.position = _json['position']
+        self.mail = _json['mail']
+        self.phone = _json['phone']
 
     def to_json(self):
-
-
+        return {
+            'tg_id': self.tg_id,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'tg_username': self.tg_username,
+            'trade_username': self.trade_username,
+            'ban': self.ban,
+            'position': self.position,
+            'pop_data': self.pop_data,
+            'mail': self.mail,
+            'phone': self.phone,
+        }
 
     def check_tg_data(self, message):
         def check_str(_string):
             for i in range(len(_string)):
-                if _string[i] not in string.printable:
-                    _string[i] = '?'
+                if _string[i] not in services.printable:
+                    _string = _string[:i] + '?' + _string[i+1:]
             return _string
 
         self.first_name = check_str(message.chat.first_name)
@@ -66,4 +109,3 @@ class User:
 
         if self.trade_username == '':
             self.trade_username = self.tg_username
-
