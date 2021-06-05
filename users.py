@@ -32,6 +32,7 @@ class Users:
         else:
             _user = User()
             _user.tg_id = message.chat.id
+            _user.trade_id = len(self.__Users) + 1
             self.__Users.update({message.chat.id: _user})
 
         _user.check_tg_data(message)
@@ -59,15 +60,19 @@ class User:
         self.last_name = ''
         self.tg_username = ''
 
-        self.trade_username = ''
-
         # tg service
         self.position = ''
         self.pop_data = {}
 
-        # service
+        # info
         self.mail = ''
         self.phone = ''
+        self.fio = ''
+        self.time_zone = ''
+        self.rating = 10
+        self.trade_id = 0
+
+        # service
         self.ban = False
 
     def load_from_json(self, _json):
@@ -75,12 +80,15 @@ class User:
         self.first_name = _json['first_name']
         self.last_name = _json['last_name']
         self.tg_username = _json['tg_username']
-        self.trade_username = _json['trade_username']
+        self.fio = _json['fio']
         self.ban = _json['ban']
         self.pop_data = _json['pop_data']
         self.position = _json['position']
         self.mail = _json['mail']
         self.phone = _json['phone']
+        self.time_zone = _json['time_zone']
+        self.rating = _json['rating']
+        self.trade_id = _json['trade_id']
 
     def to_json(self):
         return {
@@ -88,12 +96,15 @@ class User:
             'first_name': self.first_name,
             'last_name': self.last_name,
             'tg_username': self.tg_username,
-            'trade_username': self.trade_username,
+            'fio': self.fio,
             'ban': self.ban,
             'position': self.position,
             'pop_data': self.pop_data,
             'mail': self.mail,
             'phone': self.phone,
+            'time_zone': self.time_zone,
+            'rating': self.rating,
+            'trade_id': self.trade_id,
         }
 
     def check_tg_data(self, message):
@@ -106,6 +117,3 @@ class User:
         self.first_name = check_str(message.chat.first_name)
         self.last_name = check_str(message.chat.last_name)
         self.tg_username = check_str(message.chat.username)
-
-        if self.trade_username == '':
-            self.trade_username = self.tg_username

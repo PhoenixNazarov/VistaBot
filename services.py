@@ -15,6 +15,13 @@ printable = digits + ascii_letters + punctuation + whitespace
 printable += 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
 printable += 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'
 
+russian = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
+russian += 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'
+
+time_kodes = [
+    ''
+]
+
 def check_email(mail):
     if '@' not in mail:
         return False
@@ -32,6 +39,13 @@ def check_email(mail):
 
 def check_phone(phone):
     phone = phone.replace('+', '')
-    if len(phone) > 5 and len(phone) < 15 and phone.isdigit():
+    if 5 < len(phone) < 15 and phone.isdigit():
         return True
     return False
+
+
+def check_fio(fio):
+    for i in fio:
+        if i not in russian+'. ':
+            return False
+    return True
