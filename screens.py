@@ -1,7 +1,9 @@
 import telebot
 import json
+import services
 
-def welcome(key):
+
+def edit_mail(key):
     if key == 'main':
         text = 'Привет, укажи email'
     elif key == 'error_format':
@@ -14,7 +16,7 @@ def welcome(key):
     return text, None
 
 
-def welcome_second(key):
+def edit_phone(key):
     if key == 'main':
         text = 'Привет, укажи телефон'
     elif key == 'error_format':
@@ -27,7 +29,7 @@ def welcome_second(key):
     return text, None
 
 
-def welcome_third(key):
+def edit_fio(key):
     if key == 'main':
         text = 'Привет, укажи своё ФИО'
     elif key == 'error_format':
@@ -36,6 +38,16 @@ def welcome_third(key):
         text = 'Неопознаная ошибка'
 
     return text, None
+
+
+def edit_time_zone():
+    text = 'Выберите часовой пояс, относительно Москвы'
+    buttons = telebot.types.InlineKeyboardMarkup()
+    for i in range(len(services.time_zones)):
+        button = telebot.types.InlineKeyboardButton(text = services.time_zones[i], callback_data = 'time_zone_'+str(i))
+        buttons.row(button)
+
+    return text, buttons
 
 
 def main_screen(key):
@@ -67,7 +79,7 @@ def user_info(key, user):
            f'\nФИО: {user.fio}' \
            f'\nНомер телефона: {user.phone}' \
            f'\nE-Mail: {user.mail}' \
-           f'\nЧасовой пояс: '
+           f'\nЧасовой пояс: {user.time_zone}'
 
     if key == 'main':
         buttons = telebot.types.InlineKeyboardMarkup()

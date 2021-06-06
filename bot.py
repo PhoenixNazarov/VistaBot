@@ -43,7 +43,7 @@ class Bot:
 
         if user.mail == '' or user.fio == '' or user.phone == '':
             user.position = 'first_welcome'
-            self.send_screen(user, screens.welcome('main'))
+            self.send_screen(user, screens.edit_mail('main'))
         else:
             user.position = 'main'
             self.send_screen(user, screens.main_screen('main'))
@@ -57,13 +57,13 @@ class Bot:
         if user.position == 'first_welcome':
             if self.get_email(user, message.text):
                 user.position = 'second_welcome'
-                self.send_screen(user, screens.welcome_second('main'))
+                self.send_screen(user, screens.edit_phone('main'))
 
         # set phone
         elif user.position == 'second_welcome':
             if self.get_phone(user, message.text):
                 user.position = 'third_welcome'
-                self.send_screen(user, screens.welcome_third('main'))
+                self.send_screen(user, screens.edit_fio('main'))
 
         # set fio
         elif user.position == 'third_welcome':
@@ -102,43 +102,57 @@ class Bot:
                 self.edit_screen(user, screens.user_info('change', user), call.message.id)
         elif call.data.startswith('user_edit'):
             if call.data.endswith('fio'):
-                self.send_screen(user, screens.welcome_third('main'))
+                self.send_screen(user, screens.edit_fio('main'))
             elif call.data.endswith('mail'):
-                self.send_screen(user, screens.welcome('main'))
+                self.send_screen(user, screens.edit_mail('main'))
             elif call.data.endswith('phone'):
-                self.send_screen(user, screens.welcome_second('main'))
+                self.send_screen(user, screens.edit_phone('main'))
+            elif call.data.endswith('time_zone'):
+                self.edit_screen(user, screens.edit_time_zone(), call.message.id)
             user.position = call.data
 
         # faq
         elif call.data.startswith('faq'):
             self.edit_screen(user, screens.faq(int(call.data[4:])), call.message.id)
 
+        # edit time zones
+        elif call.data.startswith('time_zone'):
+            self.get_time_zone(user, call)
+
     def get_email(self, user, text):
         if not services.check_email(text):
-            self.send_screen(user, screens.welcome('error_format'))
+            self.send_screen(user, screens.edit_mail('error_format'))
         elif not self.Users.check('mail', text):
-            self.send_screen(user, screens.welcome('error_in_base'))
+            self.send_screen(user, screens.edit_mail('error_in_base'))
         else:
             user.mail = text
             return True
 
     def get_phone(self, user, text):
         if not services.check_phone(text):
-            self.send_screen(user, screens.welcome_second('error_format'))
+            self.send_screen(user, screens.edit_phone('error_format'))
         elif not self.Users.check('phone', text):
-            self.send_screen(user, screens.welcome_second('error_in_base'))
+            self.send_screen(user, screens.edit_phone('error_in_base'))
         else:
             user.phone = text
             return True
 
     def get_fio(self, user, text):
         if 5 > len(text) or len(text) > 50:
-            self.send_screen(user, screens.welcome_third('error_format'))
+            self.send_screen(user, screens.edit_fio('error_format'))
         elif not services.check_fio(text):
-            self.send_screen(user, screens.welcome_third('error_format'))
+            self.send_screen(user, screens.edit_fio('error_format'))
         else:
             user.fio = text
             return True
+
+    def get_time_zone(self, user, call):
+        key = int(call.data.split('_')[-1])
+        if len(services.time_zones) <= key:
+            self.send_screen(user, screens.edit_time_zone())
+        else:
+            user.time_zone = services.time_zones[key]
+            self.edit_screen(user, screens.user_info('main', user), call.message.id)
 
 
 Bot = Bot()
