@@ -1,6 +1,7 @@
 import json
 
 import services
+import Cards
 
 
 class Users:
@@ -63,6 +64,7 @@ class User:
         # tg service
         self.position = ''
         self.pop_data = {}
+        self.unsave_pop_data = {}
 
         # info
         self.mail = ''
@@ -71,6 +73,7 @@ class User:
         self.time_zone = ''
         self.rating = 10
         self.trade_id = 0
+        self.cards = {}
 
         # service
         self.ban = False
@@ -89,6 +92,7 @@ class User:
         self.time_zone = _json['time_zone']
         self.rating = _json['rating']
         self.trade_id = _json['trade_id']
+        self.cards = _json['cards']
 
     def to_json(self):
         return {
@@ -105,6 +109,7 @@ class User:
             'time_zone': self.time_zone,
             'rating': self.rating,
             'trade_id': self.trade_id,
+            'cards': self.cards
         }
 
     def check_tg_data(self, message):
@@ -117,3 +122,50 @@ class User:
         self.first_name = check_str(message.chat.first_name)
         self.last_name = check_str(message.chat.last_name)
         self.tg_username = check_str(message.chat.username)
+
+    def add_card(self):
+        name = self.pop_data.pop('name')
+        card_blank = [['Название', name]]
+
+        currency = self.pop_data.pop('currency')
+        if currency in ['veur', 'vusd']:
+            if currency == 'veur':
+                card_blank.append(['Валюта', 'Vista EUR'])
+            else:
+                card_blank.append(['Валюта', 'Vista USD'])
+            card_blank.append(['Номер счет', self.pop_data.pop('account')])
+            card_blank.append(['Номер телефона', self.pop_data.pop('phone')])
+
+        elif currency == 'byn':
+            card_blank.append(['Банк', self.pop_data.pop('bank')])
+            card_blank.append(['Тип карты', self.pop_data.pop('card_type')])
+            card_blank.append(['ФИО', self.pop_data.pop('fio')])
+            card_blank.append(['Дата действия', self.pop_data.pop('date_end')])
+
+        else:
+            type = self.pop_data.pop('type')
+            if type == 'card':
+                card_blank.append(['Тип', 'Карта'])
+                card_blank.append(['Банк', self.pop_data.pop('bank')])
+                card_blank.append(['Тип карты', self.pop_data.pop('card_type')])
+                card_blank.append(['ФИО', self.pop_data.pop('fio')])
+            elif type == 'account':
+                card_blank.append(['Тип', 'Счет'])
+                card_blank.append(['Банк', self.pop_data.pop('bank')])
+                card_blank.append(['БИК', self.pop_data.pop('bik')])
+                card_blank.append(['ФИО', self.pop_data.pop('fio')])
+            else:
+                card_blank.append(['Тип', 'PayPal'])
+                card_blank.append(['Mail', self.pop_data.pop('mail')])
+
+        card = ''
+        for i in card_blank:
+            card += f'{i[0]}: {i[1]}\n'
+
+        self.cards.update({name: card})
+
+        return len(self.cards)-1
+
+    def remove_card(self, id):
+        cards_name = list(self.cards.keys())[id]
+        self.cards.pop(cards_name)
