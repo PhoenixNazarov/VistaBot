@@ -34,6 +34,9 @@ popular_russian_bank = ['Сбербанк', 'Альфа-банк', 'ВТБ', 'Т
 popular_belarus_bank = ['Приорбанк', 'Белагропромбанк', 'Беларусьбанк', 'Бел ВЭБ']
 card_type = ['VISA', 'MASTER CARD', 'MAESTRO', 'МИР']
 
+http_bot = 'tg/123123/start='
+
+
 def check_email(mail):
     if '@' not in mail:
         return False

@@ -42,6 +42,11 @@ class Bot:
             return
 
         if user.mail == '' or user.fio == '' or user.phone == '':
+            s = message.text.split(' ')
+            if len(s) == 2:
+                self.Users.go_referal(user, s[1])
+
+
             user.position = 'first_welcome'
             self.send_screen(user, screens.edit_mail('main'))
         else:
@@ -204,8 +209,15 @@ class Bot:
 
         # user info - EDIT
         if call.data.startswith('userdata'):
-            if call.data.endswith('change'):
+            if call.data.endswith('main'):
+                self.edit_screen(user, screens.user_info('main', user), call.message.id)
+            elif call.data.endswith('change'):
                 self.edit_screen(user, screens.user_info('change', user), call.message.id)
+            elif call.data.endswith('referal'):
+                self.edit_screen(user, screens.user_info('referal', user), call.message.id)
+            elif call.data.endswith('ref_list'):
+                self.edit_screen(user, screens.user_info('referal_list', user, self.Users), call.message.id)
+
         elif call.data.startswith('user_edit'):
             if call.data.endswith('fio'):
                 self.send_screen(user, screens.edit_fio('main'))
@@ -238,7 +250,7 @@ class Bot:
                 id = call.data.split('_')[-1]
                 self.edit_screen(user, screens.card('del_confirm_'+id, user), call.message.id)
 
-            elif call.data.startswith('card_del_y'):
+            elif call.data.startswith('card_y_del'):
                 id = int(call.data.split('_')[-1])
                 user.remove_card(id)
                 self.edit_screen(user, screens.card(-1, user), call.message.id)

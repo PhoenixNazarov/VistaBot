@@ -70,7 +70,7 @@ def main_screen(key):
     return text, buttons
 
 
-def user_info(key, user):
+def user_info(key, user, UserBase = None):
     text = f'<b>Ваш личный кабинет:</b>' \
            f'\n' \
            f'\n🆔 Идентификатор: {user.trade_id}' \
@@ -86,6 +86,8 @@ def user_info(key, user):
         buttons = telebot.types.InlineKeyboardMarkup()
         button = telebot.types.InlineKeyboardButton(text = 'Редактировать данные', callback_data = 'userdata_change')
         buttons.row(button)
+        button = telebot.types.InlineKeyboardButton(text = 'Реферальная система', callback_data = 'userdata_referal')
+        buttons.row(button)
 
     elif key == 'change':
         buttons = telebot.types.InlineKeyboardMarkup()
@@ -97,6 +99,27 @@ def user_info(key, user):
         buttons.row(button)
         button = telebot.types.InlineKeyboardButton(text = 'Изменить часовой пояс',
                                                     callback_data = 'user_edit_time_zone')
+        buttons.row(button)
+
+    elif key == 'referal':
+        text = f'Ваша реферальная ссылка: {services.http_bot+str(user.trade_id)}'
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button = telebot.types.InlineKeyboardButton(text = 'Список рефералов', callback_data = 'userdata_ref_list')
+        buttons.row(button)
+        button = telebot.types.InlineKeyboardButton(text = '⬅️ Назад', callback_data = 'userdata_main')
+        buttons.row(button)
+
+    elif key == 'referal_list':
+        if len(user.referal_list) == 0:
+            text = 'Список пуст'
+        else:
+            text = f'Кол-во рефералов 1ого уровня: {len(user.referal_list)}'
+            for i in user.referal_list:
+                _referal = UserBase.tg_id_identification(i)
+                text += f'\n {_referal.fio}'
+
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button = telebot.types.InlineKeyboardButton(text = '⬅️ Назад', callback_data = 'userdata_referal')
         buttons.row(button)
 
     return text, buttons
@@ -141,7 +164,6 @@ def card(key, user):
 
     elif key.startswith('card_info'):
         id = int(key.split('_')[-1])
-        print(user.cards.values())
         text = list(user.cards.values())[id]
         buttons = telebot.types.InlineKeyboardMarkup()
         button = telebot.types.InlineKeyboardButton(text = '❌ Удалить', callback_data = 'card_del_'+str(id))
@@ -149,12 +171,12 @@ def card(key, user):
         button = telebot.types.InlineKeyboardButton(text = '⬅️ Назад', callback_data = 'card_back')
         buttons.row(button)
 
-    elif key == 'del_confirm':
+    elif key.startswith('del_confirm'):
         id = int(key.split('_')[-1])
         text = list(user.cards.values())[id]
         text += '\n\nВы действительно хотите удалить эту карту?'
         buttons = telebot.types.InlineKeyboardMarkup()
-        button = telebot.types.InlineKeyboardButton(text = '✔️ Да', callback_data = 'card_del_y_'+str(id))
+        button = telebot.types.InlineKeyboardButton(text = '✔️ Да', callback_data = 'card_y_del_'+str(id))
         buttons.row(button)
         button = telebot.types.InlineKeyboardButton(text = '❌ Нет', callback_data = 'card_info_'+str(id))
         buttons.row(button)
@@ -245,7 +267,3 @@ def card(key, user):
         text = 'Отправьте срок действия в формате 01/12'
 
     return text, buttons
-
-
-def edit_card(key, card):
-    pass

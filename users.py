@@ -39,6 +39,27 @@ class Users:
         _user.check_tg_data(message)
         return self.__Users[message.chat.id]
 
+    def tg_id_identification(self, id):
+        return self.__Users[id]
+
+    def go_referal(self, main_user, ref_id):
+        if main_user.referal_to:
+            return False
+        if not ref_id.isdigit():
+            return False
+
+        ref_user = None
+        for i in self.__Users:
+            if i.trade_id == int(ref_id):
+                ref_user = i
+                break
+
+        if ref_user is None:
+            return False
+
+        ref_user.referal_list.append(main_user.tg_id)
+        main_user.referal_to = True
+
     def check(self, key, value):
         if key == 'mail':
             for i in self.__Users.values():
@@ -50,8 +71,7 @@ class Users:
                 if i.phone == value:
                     return False
 
-        return True
-
+        return Tru
 
 class User:
     def __init__(self):
@@ -78,6 +98,10 @@ class User:
         # service
         self.ban = False
 
+        # referal
+        self.referal_list = []
+        self.referal_to = False
+
     def load_from_json(self, _json):
         self.tg_id = _json['tg_id']
         self.first_name = _json['first_name']
@@ -93,6 +117,8 @@ class User:
         self.rating = _json['rating']
         self.trade_id = _json['trade_id']
         self.cards = _json['cards']
+        self.referal_list = _json['referal_list']
+        self.referal_to = _json['referal_to']
 
     def to_json(self):
         return {
@@ -109,7 +135,9 @@ class User:
             'time_zone': self.time_zone,
             'rating': self.rating,
             'trade_id': self.trade_id,
-            'cards': self.cards
+            'cards': self.cards,
+            'referal_list': self.referal_list,
+            'referal_to': self.referal_to
         }
 
     def check_tg_data(self, message):
