@@ -1,8 +1,3 @@
-mails = ['box.az', 'byke.com', 'chez.com', 'email.ru', 'gmail.com', 'goldmail.ru', 'inet.ua',
-         'loveemail.com', 'bigmailbox.com', 'bigmir.net', 'mail.com', 'mail.e1.ru', 'mail.gala.net', 'lycos.com',
-         'rambler.ru', 'mail.ru', 'tut.by', 'yahoo.com', 'yandex.ru', 'netaddress.com', 'newmail.net', 'nicknames.com',
-         'outlook.live.com', 'post.cz', 'spam.lv', 'techemail.com', 'ua.fm', 'webmail.aol.com']
-
 whitespace = ' \t\n\r\v\f'
 ascii_lowercase = 'abcdefghijklmnopqrstuvwxyz'
 ascii_uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -34,7 +29,7 @@ popular_russian_bank = ['Сбербанк', 'Альфа-банк', 'ВТБ', 'Т
 popular_belarus_bank = ['Приорбанк', 'Белагропромбанк', 'Беларусьбанк', 'Бел ВЭБ']
 card_type = ['VISA', 'MASTER CARD', 'MAESTRO', 'МИР']
 
-http_bot = 'tg/123123/start='
+http_bot = 't.me/Test_for_phoenix_bot?start='
 
 
 def check_email(mail):
@@ -45,8 +40,8 @@ def check_email(mail):
         return False
 
     name, name_service = mail.split('@')
-
-    if len(name) < 3 or name_service not in mails:
+    # or name_service not in mails
+    if len(name) < 3:
         return False
 
     return True

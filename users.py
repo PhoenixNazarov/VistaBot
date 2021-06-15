@@ -1,7 +1,5 @@
 import json
-
 import services
-import Cards
 
 
 class Users:
@@ -49,7 +47,7 @@ class Users:
             return False
 
         ref_user = None
-        for i in self.__Users:
+        for i in self.__Users.values():
             if i.trade_id == int(ref_id):
                 ref_user = i
                 break
@@ -57,8 +55,16 @@ class Users:
         if ref_user is None:
             return False
 
+        if ref_user.tg_id in main_user.referal_list:
+            return False
+
         ref_user.referal_list.append(main_user.tg_id)
-        main_user.referal_to = True
+        main_user.referal_to = ref_user.tg_id
+
+    def find_main_referral(self, user_id):
+        for i in self.__Users:
+            if user_id in i.referal_list:
+                return i
 
     def check(self, key, value):
         if key == 'mail':
@@ -71,7 +77,25 @@ class Users:
                 if i.phone == value:
                     return False
 
-        return Tru
+        return True
+
+    # for admin
+    def get_users(self):
+        _json = []
+        for user in self.__Users.values():
+            _json.append([user.trade_id, user.tg_username, user.fio])
+
+        return json.dumps(_json)
+
+    def get_user(self, trade_id):
+        user = None
+        for i in self.__Users.values():
+            if str(i.trade_id) == trade_id:
+                return i
+
+        if user is None:
+            return False
+
 
 class User:
     def __init__(self):
@@ -90,7 +114,7 @@ class User:
         self.mail = ''
         self.phone = ''
         self.fio = ''
-        self.time_zone = ''
+        self.time_zone = 'МСК'
         self.rating = 10
         self.trade_id = 0
         self.cards = {}
@@ -142,6 +166,8 @@ class User:
 
     def check_tg_data(self, message):
         def check_str(_string):
+            if _string is None:
+                return 'none'
             for i in range(len(_string)):
                 if _string[i] not in services.printable:
                     _string = _string[:i] + '?' + _string[i+1:]
@@ -151,8 +177,13 @@ class User:
         self.last_name = check_str(message.chat.last_name)
         self.tg_username = check_str(message.chat.username)
 
+        # check rating == 0
+        if self.rating == 0:
+            self.ban = True
+
     def add_card(self):
         name = self.pop_data.pop('name')
+        info_card = {'name': name}
         card_blank = [['Название', name]]
 
         currency = self.pop_data.pop('currency')

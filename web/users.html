@@ -1,0 +1,212 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Пользователи</title>
+	<!-- Bootstrap Styles-->
+    <link href="assets/css/bootstrap.css" rel="stylesheet" />
+     <!-- FontAwesome Styles-->
+    <link href="assets/css/font-awesome.css" rel="stylesheet" />
+     <!-- Morris Chart Styles-->
+   
+    <!-- Custom Styles-->
+    <link href="assets/css/custom-styles.css" rel="stylesheet" />
+     <!-- Google Fonts-->
+   <link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css' />
+     <!-- TABLE STYLES-->
+    <link href="assets/js/dataTables/dataTables.bootstrap.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div id="wrapper">
+        <nav class="navbar navbar-default top-navbar" role="navigation">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".sidebar-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand">VistaBot</a>
+            </div>
+
+        </nav>
+        <nav class="navbar-default navbar-side" role="navigation">
+
+            <div class="sidebar-collapse">
+                <ul class="nav" id="main-menu">
+                    <li>
+                        <a href="index.html"><i class="fa fa-dashboard"></i> Dashboard</a>
+                    </li>
+                    <li>
+                        <a id="users_nav" class="active-menu"><i class="fa fa-users"></i> Пользователи</a>
+                    </li>
+                </ul>
+
+            </div>
+
+        </nav>
+
+        <div id="page-wrapper" >
+            <div id="page-inner">
+
+                <div id = "users" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="panel panel-default">
+                                <div class="panel-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-bordered table-hover" id="dataTables-users">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>tg username</th>
+                                                    <th>фио</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="user" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    Информация о пользователе
+                                </div>
+                                <div class="panel-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <p class="text-center"><b>телеграм</b></p>
+                                            <table class="table">
+                                                <thead>
+                                                    <tr>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td><b>Id:</b></td>
+                                                        <td id="tg_id"></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><b>Имя:</b></td>
+                                                        <td id="first_name"></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><b>Фамилия:</b></td>
+                                                        <td id="last_name"></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><b>Username:</b></td>
+                                                        <td id="tg_username"></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            <p class="text-center"><b>инфо</b></p>
+                                            <table class="table">
+                                                <thead>
+                                                    <tr>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td><b>Id:</b></td>
+                                                        <td id="trade_id"></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><b>ФИО:</b></td>
+                                                        <td id="fio"></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><b>Mail:</b></td>
+                                                        <td id="mail"></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><b>Phone:</b></td>
+                                                        <td id="phone"></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><b>Часовой пояс:</b></td>
+                                                        <td id="time_zone"></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            <p class="text-center"><b>карты</b></p>
+                                            <table id = "cards" class="table">
+                                                <thead>
+                                                    <tr>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                </tbody>
+                                            </table>
+
+                                            <p class="text-center"><b>рефералы</b></p>
+                                            <table id="referrals" class="table">
+                                                <thead>
+                                                    <tr>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td><b>Главный реферал:</b></td>
+                                                        <td id="referral"></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p class="text-center"><b>Управление</b></p>
+
+                                            <div class="form-group">
+                                                <button id="ban" type="button" class="btn btn-secondary btn btn-block">1</button>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Рейтинг</label>
+                                                <input id="rating" class="form-control">
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+             <!-- /. PAGE INNER  -->
+    </div>
+         <!-- /. PAGE WRAPPER  -->
+     <!-- /. WRAPPER  -->
+    <!-- JS Scripts-->
+    <!-- jQuery Js -->
+    <script src="assets/js/jquery-1.10.2.js"></script>
+      <!-- Bootstrap Js -->
+    <script src="assets/js/bootstrap.min.js"></script>
+    <!-- Metis Menu Js -->
+    <script src="assets/js/jquery.metisMenu.js"></script>
+     <!-- DATA TABLE SCRIPTS -->
+    <script src="assets/js/dataTables/jquery.dataTables.js"></script>
+    <script src="assets/js/dataTables/dataTables.bootstrap.js"></script>
+
+         <!-- Custom Js -->
+    <script src="assets/js/using/data.js"></script>
+    <script src="assets/js/using/users.js"></script>
+    
+   
+</body>
+</html>

@@ -7,10 +7,10 @@ import services
 
 
 class Bot:
-    def __init__(self):
+    def __init__(self, config):
         self.token = '1229678012:AAELEl3SUr3arUWH5sQD2jP6njscOxGZS_c'
         self.bot = telebot.TeleBot(self.token)
-        self.Users = users.Users()
+        self.Users = config.Users
 
     def initiate(self):
         @self.bot.message_handler(commands = ['start'])
@@ -45,7 +45,6 @@ class Bot:
             s = message.text.split(' ')
             if len(s) == 2:
                 self.Users.go_referal(user, s[1])
-
 
             user.position = 'first_welcome'
             self.send_screen(user, screens.edit_mail('main'))
@@ -104,7 +103,10 @@ class Bot:
         # edit card
         elif user.position.startswith('card_edit'):
             if user.position.endswith('name'):
-                if services.check_card_name(message.text):
+                if message.text in user.cards:
+                    self.send_screen(user, screens.card('name_error', user))
+
+                elif services.check_card_name(message.text):
                     user.pop_data.update({'name': message.text})
 
                     if user.pop_data['currency'] in ['veur', 'vusd']:
@@ -116,7 +118,7 @@ class Bot:
                         self.send_screen(user, screens.card('choose_bank_byn', user))
                         user.position = 'card_edit_choose_bank_type'
                 else:
-                    self.send_screen(user, screens.card('name_error', user))
+                    self.send_screen(user, screens.card('name_alr', user))
 
             # only vista
             elif user.position.endswith('vista_account'):
@@ -130,7 +132,7 @@ class Bot:
             elif user.position.endswith('vista_number'):
                 if 1:
                     user.pop_data.update({'phone': message.text})
-                    user.add_card()
+                    self.card_edit_finish(user)
                 else:
                     self.send_screen(user, screens.card('vista_number', user))
 
@@ -341,6 +343,3 @@ class Bot:
         self.send_screen(user, screens.card('card_info_' + str(id), user))
         self.Users.save()
 
-
-Bot = Bot()
-Bot.initiate()

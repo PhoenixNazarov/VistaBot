@@ -201,6 +201,10 @@ def card(key, user):
     elif key == 'name_error':
         text = 'Напишите название для карты. Например Моя виста. Длина должна быть короче 20 символов'
 
+    elif key == 'name_alr':
+        text = 'Это название уже существует'
+
+
     # only vista
     elif key == 'vista_account':
         text = 'Введите номер счета в формате VST-20140101-123456-978'
