@@ -2,6 +2,8 @@ import flask
 from flask import Flask, request, Response
 import json
 
+import services
+
 
 class Admin_panel:
     def __init__(self, config):
@@ -56,6 +58,7 @@ class Admin_panel:
                 return Response('false')
 
             js = user.to_json()
+            # referrals
             referrals = []
             for i in user.referal_list:
                 ref_user = self.Users.tg_id_identification(i)
@@ -64,6 +67,13 @@ class Admin_panel:
             js.update({'referrals': referrals})
             if user.referal_to:
                 js.update({'main_referral': self.Users.tg_id_identification(user.referal_to).trade_id})
+
+            # cards
+            cards = []
+            for i in user.cards:
+                cards.append(services.collect_card(i, 'web'))
+            js.pop('cards')
+            js.update({'cards': cards})
 
             return Response(json.dumps(js))
 
@@ -88,7 +98,6 @@ class Admin_panel:
                 user.rating = int(count)
 
             return Response('true')
-
 
         @self.app.after_request
         def after_request(response):

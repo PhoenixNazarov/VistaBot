@@ -70,7 +70,7 @@ def main_screen(key):
     return text, buttons
 
 
-def user_info(key, user, UserBase = None):
+def user_info(key, user, UserBase=None):
     text = f'<b>Ваш личный кабинет:</b>' \
            f'\n' \
            f'\n🆔 Идентификатор: {user.trade_id}' \
@@ -102,7 +102,7 @@ def user_info(key, user, UserBase = None):
         buttons.row(button)
 
     elif key == 'referal':
-        text = f'Ваша реферальная ссылка: {services.http_bot+str(user.trade_id)}'
+        text = f'Ваша реферальная ссылка: {services.http_bot + str(user.trade_id)}'
         buttons = telebot.types.InlineKeyboardMarkup()
         button = telebot.types.InlineKeyboardButton(text = 'Список рефералов', callback_data = 'userdata_ref_list')
         buttons.row(button)
@@ -150,13 +150,16 @@ def card(key, user):
         text = f'Ваши карты:'
         buttons = telebot.types.InlineKeyboardMarkup()
 
-        cards_name = list(user.cards.keys())
+        cards_name = user.names_cards()
         for i in range(len(cards_name) // 2):
-            button1 = telebot.types.InlineKeyboardButton(text = cards_name[i*2], callback_data = 'card_info_'+str(i*2))
-            button2 = telebot.types.InlineKeyboardButton(text = cards_name[i*2+1], callback_data = 'card_info_'+str(i*2+1))
+            button1 = telebot.types.InlineKeyboardButton(text = cards_name[i * 2],
+                                                         callback_data = 'card_info_' + str(i * 2))
+            button2 = telebot.types.InlineKeyboardButton(text = cards_name[i * 2 + 1],
+                                                         callback_data = 'card_info_' + str(i * 2 + 1))
             buttons.row(button1, button2)
-        if len(cards_name)% 2 == 1:
-            button1 = telebot.types.InlineKeyboardButton(text = cards_name[-1], callback_data = 'card_info_'+str(len(cards_name)-1))
+        if len(cards_name) % 2 == 1:
+            button1 = telebot.types.InlineKeyboardButton(text = cards_name[-1],
+                                                         callback_data = 'card_info_' + str(len(cards_name) - 1))
             buttons.row(button1)
 
         button = telebot.types.InlineKeyboardButton(text = '💳 Добавить карту', callback_data = 'card_add')
@@ -164,21 +167,21 @@ def card(key, user):
 
     elif key.startswith('card_info'):
         id = int(key.split('_')[-1])
-        text = list(user.cards.values())[id]
+        text = services.collect_card(user.cards[id])
         buttons = telebot.types.InlineKeyboardMarkup()
-        button = telebot.types.InlineKeyboardButton(text = '❌ Удалить', callback_data = 'card_del_'+str(id))
+        button = telebot.types.InlineKeyboardButton(text = '❌ Удалить', callback_data = 'card_del_' + str(id))
         buttons.row(button)
         button = telebot.types.InlineKeyboardButton(text = '⬅️ Назад', callback_data = 'card_back')
         buttons.row(button)
 
     elif key.startswith('del_confirm'):
         id = int(key.split('_')[-1])
-        text = list(user.cards.values())[id]
+        text = services.collect_card(user.cards[id])
         text += '\n\nВы действительно хотите удалить эту карту?'
         buttons = telebot.types.InlineKeyboardMarkup()
-        button = telebot.types.InlineKeyboardButton(text = '✔️ Да', callback_data = 'card_y_del_'+str(id))
+        button = telebot.types.InlineKeyboardButton(text = '✔️ Да', callback_data = 'card_y_del_' + str(id))
         buttons.row(button)
-        button = telebot.types.InlineKeyboardButton(text = '❌ Нет', callback_data = 'card_info_'+str(id))
+        button = telebot.types.InlineKeyboardButton(text = '❌ Нет', callback_data = 'card_info_' + str(id))
         buttons.row(button)
 
     # editing
@@ -253,7 +256,7 @@ def card(key, user):
         text = 'Отправьте номер карты'
 
     elif key == 'account_number':
-        text = 'Отправьте ФИО'
+        text = 'Отправьте номер счета'
 
     elif key == 'mail':
         text = 'Отправьте email, привязанный к PayPal'

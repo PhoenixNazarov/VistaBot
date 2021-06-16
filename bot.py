@@ -103,7 +103,7 @@ class Bot:
         # edit card
         elif user.position.startswith('card_edit'):
             if user.position.endswith('name'):
-                if message.text in user.cards:
+                if message.text in user.names_cards():
                     self.send_screen(user, screens.card('name_error', user))
 
                 elif services.check_card_name(message.text):
@@ -290,7 +290,7 @@ class Bot:
 
             elif call.data.endswith('tcard'):
                 card = int(call.data.split('_')[1])
-                user.pop_data.update({'type_card': services.card_type[card]})
+                user.pop_data.update({'card_type': services.card_type[card]})
                 user.position = 'card_edit_fio'
                 self.edit_screen(user, screens.card('fio', user), call.message.id)
 
@@ -298,6 +298,7 @@ class Bot:
             elif call.data.endswith('bank_byn'):
                 bank = int(call.data.split('_')[1])
                 user.pop_data.update({'bank': services.popular_belarus_bank[bank]})
+                user.pop_data.update({'type': 'account'})
                 self.edit_screen(user, screens.card('type_card', user), call.message.id)
                 user.position = 'card_edit_type_card'
 

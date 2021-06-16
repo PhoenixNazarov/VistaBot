@@ -103,3 +103,57 @@ def check_date_end(date):
             if numbers[0].isdigit() and numbers[1].isdigit():
                 return True
     return False
+
+
+# cards
+def collect_card(c_list, type=None):
+    c_type = c_list[0]
+    card_info = [['Название', c_list[1]]]
+
+    if c_type == 've':
+        card_info.append(['Валюта', 'Vista EUR'])
+        card_info.append(['Номер счет', c_list[3]])
+        card_info.append(['Номер телефона', c_list[4]])
+
+    elif c_type == 'vu':
+        card_info.append(['Валюта', 'Vista USD'])
+        card_info.append(['Номер счет', c_list[3]])
+        card_info.append(['Номер телефона', c_list[4]])
+
+    elif c_type == 'c':
+        card_info.append(['Валюта', c_list[2]])
+        card_info.append(['Тип', 'Карта'])
+        card_info.append(['Банк', c_list[3]])
+        card_info.append(['Тип карты', c_list[4]])
+        card_info.append(['Номер карты', c_list[5]])
+        card_info.append(['ФИО', c_list[6]])
+
+    elif c_type == 'a':
+        card_info.append(['Валюта', c_list[2]])
+        card_info.append(['Тип', 'Счет'])
+        card_info.append(['Банк', c_list[3]])
+        card_info.append(['БИК', c_list[4]])
+        card_info.append(['Номер счета', c_list[5]])
+        card_info.append(['ФИО', c_list[6]])
+
+    elif c_type == 'p':
+        card_info.append(['Валюта', c_list[2]])
+        card_info.append(['Тип', 'PayPal'])
+        card_info.append(['Mail', c_list[3]])
+
+    else:
+        card_info.append(['Валюта', c_list[2]])
+        card_info.append(['Банк', c_list[3]])
+        card_info.append(['Тип карты', c_list[4]])
+        card_info.append(['ФИО', c_list[5]])
+        card_info.append(['Дата действия', c_list[6]])
+
+    card = ''
+    for i in card_info:
+        card += f'{i[0]}: {i[1]}'
+        if type == 'web':
+            card += '<br>'
+        else:
+            card += '\n'
+
+    return card

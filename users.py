@@ -117,12 +117,12 @@ class User:
         self.time_zone = 'МСК'
         self.rating = 10
         self.trade_id = 0
-        self.cards = {}
+        self.cards = []
 
         # service
         self.ban = False
 
-        # referal
+        # referral
         self.referal_list = []
         self.referal_to = False
 
@@ -170,7 +170,7 @@ class User:
                 return 'none'
             for i in range(len(_string)):
                 if _string[i] not in services.printable:
-                    _string = _string[:i] + '?' + _string[i+1:]
+                    _string = _string[:i] + '?' + _string[i + 1:]
             return _string
 
         self.first_name = check_str(message.chat.first_name)
@@ -183,48 +183,54 @@ class User:
 
     def add_card(self):
         name = self.pop_data.pop('name')
-        info_card = {'name': name}
-        card_blank = [['Название', name]]
+        info_card = [name]
 
         currency = self.pop_data.pop('currency')
+        info_card.append(currency)
         if currency in ['veur', 'vusd']:
             if currency == 'veur':
-                card_blank.append(['Валюта', 'Vista EUR'])
+                c_type = 've'
             else:
-                card_blank.append(['Валюта', 'Vista USD'])
-            card_blank.append(['Номер счет', self.pop_data.pop('account')])
-            card_blank.append(['Номер телефона', self.pop_data.pop('phone')])
+                c_type = 'vu'
+            info_card.append(self.pop_data.pop('account'))
+            info_card.append(self.pop_data.pop('phone'))
 
         elif currency == 'byn':
-            card_blank.append(['Банк', self.pop_data.pop('bank')])
-            card_blank.append(['Тип карты', self.pop_data.pop('card_type')])
-            card_blank.append(['ФИО', self.pop_data.pop('fio')])
-            card_blank.append(['Дата действия', self.pop_data.pop('date_end')])
+            c_type = 'b'
+            info_card.append(self.pop_data.pop('bank'))
+            info_card.append(self.pop_data.pop('card_type'))
+            info_card.append(self.pop_data.pop('fio'))
+            info_card.append(self.pop_data.pop('date_end'))
 
         else:
             type = self.pop_data.pop('type')
             if type == 'card':
-                card_blank.append(['Тип', 'Карта'])
-                card_blank.append(['Банк', self.pop_data.pop('bank')])
-                card_blank.append(['Тип карты', self.pop_data.pop('card_type')])
-                card_blank.append(['ФИО', self.pop_data.pop('fio')])
+                c_type = 'c'
+                info_card.append(self.pop_data.pop('bank'))
+                info_card.append(self.pop_data.pop('card_type'))
+                info_card.append(self.pop_data.pop('card_number'))
+                info_card.append(self.pop_data.pop('fio'))
             elif type == 'account':
-                card_blank.append(['Тип', 'Счет'])
-                card_blank.append(['Банк', self.pop_data.pop('bank')])
-                card_blank.append(['БИК', self.pop_data.pop('bik')])
-                card_blank.append(['ФИО', self.pop_data.pop('fio')])
+                c_type = 'a'
+                info_card.append(self.pop_data.pop('bank'))
+                info_card.append(self.pop_data.pop('bik'))
+                info_card.append(self.pop_data.pop('account_number'))
+                info_card.append(self.pop_data.pop('fio'))
             else:
-                card_blank.append(['Тип', 'PayPal'])
-                card_blank.append(['Mail', self.pop_data.pop('mail')])
+                c_type = 'p'
+                info_card.append(self.pop_data.pop('mail'))
 
-        card = ''
-        for i in card_blank:
-            card += f'{i[0]}: {i[1]}\n'
+        current_card = [c_type] + info_card
 
-        self.cards.update({name: card})
+        self.cards.append(current_card)
 
-        return len(self.cards)-1
+        return len(self.cards) - 1
 
     def remove_card(self, id):
-        cards_name = list(self.cards.keys())[id]
-        self.cards.pop(cards_name)
+        self.cards.pop(id)
+
+    def names_cards(self):
+        names = []
+        for i in self.cards:
+            names.append(i[1])
+        return names
