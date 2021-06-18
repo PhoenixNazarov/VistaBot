@@ -27,6 +27,7 @@ time_zones = [
 
 popular_russian_bank = ['Сбербанк', 'Альфа-банк', 'ВТБ', 'Тинькоф']
 popular_belarus_bank = ['Приорбанк', 'Белагропромбанк', 'Беларусьбанк', 'Бел ВЭБ']
+ser_bank = ['PayPal']
 card_type = ['VISA', 'MASTER CARD', 'MAESTRO', 'МИР']
 
 http_bot = 't.me/Test_for_phoenix_bot?start='
@@ -105,8 +106,28 @@ def check_date_end(date):
     return False
 
 
-# cards
-def collect_card(c_list, type=None):
+def find_vst_fiat(f_cur, s_cur):
+    vst_cur = ''
+    fiat_cur = ''
+
+    if 'vusd' in [f_cur, s_cur]:
+        vst_cur = 'usd'
+    if 'veur' in [f_cur, s_cur]:
+        vst_cur = 'eur'
+
+    if 'rub' in [f_cur, s_cur]:
+        fiat_cur = 'rub'
+    if 'usd' in [f_cur, s_cur]:
+        fiat_cur = 'usd'
+    if 'byn' in [f_cur, s_cur]:
+        fiat_cur = 'byn'
+    if 'eur' in [f_cur, s_cur]:
+        fiat_cur = 'eur'
+
+    return vst_cur, fiat_cur
+
+
+def collect_card1(c_list, type = None):
     c_type = c_list[0]
     card_info = [['Название', c_list[1]]]
 
@@ -157,3 +178,4 @@ def collect_card(c_list, type=None):
             card += '\n'
 
     return card
+

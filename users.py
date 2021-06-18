@@ -1,4 +1,5 @@
 import json
+import datetime
 import services
 
 
@@ -121,12 +122,17 @@ class User:
 
         # service
         self.ban = False
+        self.last_active = ''
 
         # referral
         self.referal_list = []
         self.referal_to = False
 
     def load_from_json(self, _json):
+        # add new stat
+        if 'last_active' not in _json:
+            _json.update({'last_active': ''})
+
         self.tg_id = _json['tg_id']
         self.first_name = _json['first_name']
         self.last_name = _json['last_name']
@@ -140,9 +146,12 @@ class User:
         self.time_zone = _json['time_zone']
         self.rating = _json['rating']
         self.trade_id = _json['trade_id']
-        self.cards = _json['cards']
         self.referal_list = _json['referal_list']
         self.referal_to = _json['referal_to']
+        self.last_active = _json['last_active']
+
+        for i in _json['cards']:
+            self.cards.append(Card(i))
 
     def to_json(self):
         return {
@@ -159,9 +168,10 @@ class User:
             'time_zone': self.time_zone,
             'rating': self.rating,
             'trade_id': self.trade_id,
-            'cards': self.cards,
+            'cards': [i.config for i in self.cards],
             'referal_list': self.referal_list,
-            'referal_to': self.referal_to
+            'referal_to': self.referal_to,
+            'last_active': self.last_active
         }
 
     def check_tg_data(self, message):
@@ -177,10 +187,16 @@ class User:
         self.last_name = check_str(message.chat.last_name)
         self.tg_username = check_str(message.chat.username)
 
-        # check rating == 0
         if self.rating == 0:
             self.ban = True
 
+        self.last_active = datetime.datetime.now().strftime('%H:%M %d.%m.%Y')
+
+    def clear(self):
+        self.pop_data = {}
+        self.position = ''
+
+    # cards
     def add_card(self):
         name = self.pop_data.pop('name')
         info_card = [name]
@@ -222,7 +238,7 @@ class User:
 
         current_card = [c_type] + info_card
 
-        self.cards.append(current_card)
+        self.cards.append(Card(current_card))
 
         return len(self.cards) - 1
 
@@ -232,5 +248,110 @@ class User:
     def names_cards(self):
         names = []
         for i in self.cards:
-            names.append(i[1])
+            names.append(i.name)
         return names
+
+    def get_card_currency(self, currency):
+        cards = []
+        for i in self.cards:
+            if i.currency == currency:
+                cards.append(i)
+        return cards
+
+    # bids
+
+
+class Card:
+    def __init__(self, config):
+        # mandatory
+        self.name = ''
+        self.currency = ''
+        self.text = ''
+
+        # service
+        self.config = config
+        self.create_type = ''
+
+        # optional
+        self.bank = ''
+
+        self.create()
+
+    def create(self):
+        self.create_type = self.config[0]
+        self.name = self.config[1]
+        self.currency = self.config[2]
+
+        if self.create_type in ['c', 'a', 'b']:
+            self.bank = self.config[3]
+
+    def collect_full(self, show = 'tg'):
+        if self.create_type == 've':
+            text = f'{self.name}, Vista EUR\n' \
+                   f'{self.config[3]}\n' \
+                   f'{self.config[4]}'
+
+        elif self.create_type == 'vu':
+            text = f'{self.name}, Vista USD\n' \
+                   f'{self.config[3]}\n' \
+                   f'{self.config[4]}'
+
+        elif self.create_type == 'c':
+            text = f'{self.name}, Карта, {self.config[2]}\n' \
+                   f'{self.config[3]}, {self.config[4]}\n' \
+                   f'{self.config[5]}, {self.config[6]}'\
+
+        elif self.create_type == 'a':
+            text = f'{self.name}, Счёт, {self.config[2]}\n' \
+                   f'{self.config[3]}\n' \
+                   f'Бик: {self.config[4]}\n' \
+                   f'Номер счёта: {self.config[5]}\n' \
+                   f'{self.config[6]}'
+
+        elif self.create_type == 'p':
+            text = f'{self.name}, PayPal, {self.config[2]}\n' \
+                   f'{self.config[3]}'
+
+        else:
+            text = f'{self.name}, BYN\n' \
+                   f'{self.config[3]}, {self.config[4]}\n' \
+                   f'{self.config[5], self.config[6]}'
+
+        if show == 'tg':
+            return text
+        elif show == 'web':
+            return text.replace('\n', '<br>')
+
+
+class Asks:
+    def __init__(self):
+        self.__asks = []
+
+
+class Ask:
+    def __init__(self):
+        # vst / fiat
+        self.type = 'vst'
+
+
+class Bid:
+    def __init__(self):
+        self.status = ''
+
+        # users
+        self.vista_people = 0
+        self.vista_people_vst_card = []
+        self.vista_people_fiat_card = []
+
+        self.fiat_people = 0
+        self.fiat_people_vst_card = []
+        self.fiat_people_banks = []
+
+        # info
+        self.count_vst = 0
+        self.count_fiat = 0
+        self.rate = 0
+
+        # for part buy
+        self.can_part = False
+        self.min_part = 0

@@ -167,7 +167,7 @@ def card(key, user):
 
     elif key.startswith('card_info'):
         id = int(key.split('_')[-1])
-        text = services.collect_card(user.cards[id])
+        text = user.cards[id].collect_full('tg')
         buttons = telebot.types.InlineKeyboardMarkup()
         button = telebot.types.InlineKeyboardButton(text = '❌ Удалить', callback_data = 'card_del_' + str(id))
         buttons.row(button)
@@ -176,7 +176,7 @@ def card(key, user):
 
     elif key.startswith('del_confirm'):
         id = int(key.split('_')[-1])
-        text = services.collect_card(user.cards[id])
+        text = user.cards[id].collect_full('tg')
         text += '\n\nВы действительно хотите удалить эту карту?'
         buttons = telebot.types.InlineKeyboardMarkup()
         button = telebot.types.InlineKeyboardButton(text = '✔️ Да', callback_data = 'card_y_del_' + str(id))
@@ -206,7 +206,6 @@ def card(key, user):
 
     elif key == 'name_alr':
         text = 'Это название уже существует'
-
 
     # only vista
     elif key == 'vista_account':
@@ -272,5 +271,116 @@ def card(key, user):
 
     elif key == 'date_end':
         text = 'Отправьте срок действия в формате 01/12'
+
+    return text, buttons
+
+
+def create_asks(key, user, Rates = None):
+    buttons = None
+    if key == 'choose_f':
+        text = 'Выберите валюту, которую хотите отдать'
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button1 = telebot.types.InlineKeyboardButton(text = 'Vista EUR', callback_data = 'ask_veur_fcurrency')
+        button2 = telebot.types.InlineKeyboardButton(text = 'Vista USD', callback_data = 'ask_vusd_fcurrency')
+        buttons.row(button1, button2)
+        button1 = telebot.types.InlineKeyboardButton(text = 'RUB', callback_data = 'ask_rub_fcurrency')
+        button2 = telebot.types.InlineKeyboardButton(text = 'USD', callback_data = 'ask_usd_fcurrency')
+        buttons.row(button1, button2)
+        button1 = telebot.types.InlineKeyboardButton(text = 'EUR', callback_data = 'ask_eur_fcurrency')
+        button2 = telebot.types.InlineKeyboardButton(text = 'BYN', callback_data = 'ask_byn_fcurrency')
+        buttons.row(button1, button2)
+
+    elif key == 'havent_cards':
+        text = 'У вас нет подходящих карт, добавьте карты в шаблоны.'
+
+    elif key == 'count':
+        text = 'Введите сумму, которую хотите обменять'
+
+    elif key == 'count_error':
+        text = 'Вы ввели не число. Введите сумму, которую хотите обменять'
+
+    elif key == 'choose_s':
+        text = 'Выберите валюту, которую хотите получить'
+        if 'fcurrency' not in user.pop_data:
+            return create_asks('choose_f', user)
+
+        fcurrency = user.pop_data['fcurrency']
+        buttons = telebot.types.InlineKeyboardMarkup()
+        if fcurrency in ['veur', 'vusd']:
+            button1 = telebot.types.InlineKeyboardButton(text = 'RUB', callback_data = 'ask_rub_scurrency')
+            button2 = telebot.types.InlineKeyboardButton(text = 'USD', callback_data = 'ask_usd_scurrency')
+            buttons.row(button1, button2)
+            button1 = telebot.types.InlineKeyboardButton(text = 'EUR', callback_data = 'ask_eur_scurrency')
+            button2 = telebot.types.InlineKeyboardButton(text = 'BYN', callback_data = 'ask_byn_scurrency')
+            buttons.row(button1, button2)
+        else:
+            button1 = telebot.types.InlineKeyboardButton(text = 'Vista EUR', callback_data = 'ask_veur_scurrency')
+            button2 = telebot.types.InlineKeyboardButton(text = 'Vista USD', callback_data = 'ask_vusd_scurrency')
+            buttons.row(button1, button2)
+
+    elif key == 'rate':
+        if 'fcurrency' not in user.pop_data or 'scurrency' not in user.pop_data:
+            return create_asks('choose_f', user)
+
+        vst_cur, fiat_cur = services.find_vst_fiat(user.pop_data['fcurrency'], user.pop_data['scurrency'])
+
+        rate = Rates.get_rate(fiat_cur, vst_cur)
+        user.pop_data.update({
+            'cbrf_rate': rate,
+            'fiat': fiat_cur,
+            'vst': vst_cur
+            })
+        text = f'Какой курс хотите использовать? Курс ЦБРФ {rate}'
+
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button1 = telebot.types.InlineKeyboardButton(text = f'Оставить курс ЦБРФ {rate}', callback_data = 'ask_rate')
+        buttons.row(button1)
+
+    elif key == 'rate_error':
+        text = 'Неверный курс, укажите правильный курс'
+
+    # elif key == 'get_card':
+    #     text = 'На какую карту '
+    #     if 'fcurrency' not in user.pop_data or 'scurrency' not in user.pop_data:
+    #         return create_asks('choose_f', user)
+    #
+    #     buttons = telebot.types.InlineKeyboardMarkup()
+    #     button1 = telebot.types.InlineKeyboardButton(text = 'Да', callback_data = 'ask_1_alr')
+    #     button2 = telebot.types.InlineKeyboardButton(text = 'Нет, создать', callback_data = 'ask_0_alr')
+    #     buttons.row(button1, button2)
+
+    elif key == 'get_fiat_card':
+        text = f'Выберите карты, куда вы хотите получить {user.pop_data["fiat"]}'
+        buttons = telebot.types.InlineKeyboardMarkup()
+        
+        if sum([i for i in user.pop_data['cards_name'].values()]):
+            button1 = telebot.types.InlineKeyboardButton(text = 'Продолжить', callback_data = 'ask_next_cards')
+            buttons.row(button1)
+
+        num = 0
+        for i in user.pop_data['cards_name']:
+            button_text = i
+            if user.pop_data['cards_name'][i] == 1:
+                button_text += ' ✅'
+            button1 = telebot.types.InlineKeyboardButton(text = button_text, callback_data = f'ask_{num}_cards')
+            buttons.row(button1)
+            num += 1
+
+    elif key == 'vst_send':
+        text = f'Выберите карту, с которой вы хотите отправить VST {user.pop_data["vst"]}'
+        buttons = telebot.types.InlineKeyboardMarkup()
+
+        num = 0
+        for i in user.get_card_currency:
+            button_text = i
+            if user.pop_data['cards_name'][i] == 1:
+                button_text += ' ✅'
+            button1 = telebot.types.InlineKeyboardButton(text = button_text, callback_data = f'ask_{num}_cards')
+            buttons.row(button1)
+            num += 1
+
+        
+
+
 
     return text, buttons

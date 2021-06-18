@@ -71,7 +71,7 @@ class Admin_panel:
             # cards
             cards = []
             for i in user.cards:
-                cards.append(services.collect_card(i, 'web'))
+                cards.append(i.collect_full('web'))
             js.pop('cards')
             js.update({'cards': cards})
 

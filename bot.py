@@ -11,6 +11,7 @@ class Bot:
         self.token = '1229678012:AAELEl3SUr3arUWH5sQD2jP6njscOxGZS_c'
         self.bot = telebot.TeleBot(self.token)
         self.Users = config.Users
+        self.Rates = config.Rates
 
     def initiate(self):
         @self.bot.message_handler(commands = ['start'])
@@ -78,14 +79,17 @@ class Bot:
 
         # registration end, main menu
         elif message.text == '👤 Личный кабинет':
-            user.position = ''
+            user.clear()
             self.send_screen(user, screens.user_info('main', user))
         elif message.text == '❓ Поддержка и информация':
-            user.position = ''
+            user.clear()
             self.send_screen(user, screens.faq(-1))
         elif message.text == '💳 Шаблоны моих карт и счетов':
-            user.position = ''
+            user.clear()
             self.send_screen(user, screens.card(-1, user))
+        elif message.text == '💵 Создать заявку':
+            user.clear()
+            self.send_screen(user, screens.create_asks('choose_f', user))
 
         # user info - EDIT
         elif user.position.startswith('user_edit'):
@@ -204,6 +208,26 @@ class Bot:
                 else:
                     self.send_screen(user, screens.card('date_end', user))
 
+        # create ask
+        elif user.position.startswith('create_ask'):
+            if user.position.endswith('count'):
+                if message.text.isdigit():
+                    self.send_screen(user, screens.create_asks('choose_s', user))
+                else:
+                    self.send_screen(user, screens.create_asks('count_error', user))
+
+            elif user.position.endswith('rate'):
+                text = message.text.replace(',', '.')
+                if text.isdigit():
+                    num = float(text)
+                    if num > 0:
+                        user.pop_data.update({'rate': num})
+                        self.create_ask_5_step(user)
+                    else:
+                        self.send_screen(user, screens.create_asks('rate_error', user))
+                else:
+                    self.send_screen(user, screens.create_asks('rate_error', user))
+
     def __query(self, call):
         user = self.Users.tg_identification(call.message)
         if user.ban:
@@ -250,7 +274,7 @@ class Bot:
 
             elif call.data.startswith('card_del'):
                 id = call.data.split('_')[-1]
-                self.edit_screen(user, screens.card('del_confirm_'+id, user), call.message.id)
+                self.edit_screen(user, screens.card('del_confirm_' + id, user), call.message.id)
 
             elif call.data.startswith('card_y_del'):
                 id = int(call.data.split('_')[-1])
@@ -302,7 +326,49 @@ class Bot:
                 self.edit_screen(user, screens.card('type_card', user), call.message.id)
                 user.position = 'card_edit_type_card'
 
+        # create ask
+        elif call.data.startswith('ask'):
+
+            # choose first currency
+            if call.data.endswith('fcurrency'):
+                currency = call.data.split('_')[1]
+                # test card
+                # cards = user.get_card_currency(currency)
+                # if len(cards) == 0:
+                #     self.edit_screen(user, screens.create_asks('havent_cards', user), call.message.id)
+                # else:
+                user.pop_data.update({'fcurrency': currency})
+                user.position = 'create_ask_count'
+                self.edit_screen(user, screens.create_asks('count', user), call.message.id)
+
+            # choose second currency
+            elif call.data.endswith('scurrency'):
+                currency = call.data.split('_')[1]
+                user.pop_data.update({'scurrency': currency})
+                self.edit_screen(user, screens.create_asks('rate', user, self.Rates), call.message.id)
+                user.position = 'create_ask_rate'
+
+            # choose rate cbrf
+            elif call.data.endswith('rate'):
+                user.pop_data.update({'rate': user.pop_data['cbrf_rate']})
+                self.create_ask_5_step(user, call.message.id)
+
+            # choose cards
+            elif call.data.endswith('cards'):
+                pos = call.data.split('_')[1]
+                if pos == 'next':
+                    pass
+                else:
+                    ind = list(user.pop_data['cards_name'].keys())[int(pos)]
+                    if user.pop_data['cards_name'][ind] == 1:
+                        user.pop_data['cards_name'][ind] = 0
+                    else:
+                        user.pop_data['cards_name'][ind] = 1
+
+                    self.edit_screen(user, screens.create_asks('get_fiat_card', user, self.Rates), call.message.id)
+
     # userdata
+
     def get_email(self, user, text):
         if not services.check_email(text):
             self.send_screen(user, screens.edit_mail('error_format'))
@@ -344,3 +410,29 @@ class Bot:
         self.send_screen(user, screens.card('card_info_' + str(id), user))
         self.Users.save()
 
+    # ask
+    def create_ask_5_step(self, user, edit=None):
+        if user.pop_data['fcurrency'] in ['veur', 'vusd']:
+            cards = user.get_card_currency(user.pop_data['fiat'])
+            cards_name = {i.name: 0 for i in cards}
+            user.pop_data.update({'cards_name': cards_name})
+
+            if edit is None:
+                self.send_screen(user, screens.create_asks('get_fiat_card', user, self.Rates))
+            else:
+                self.edit_screen(user, screens.create_asks('get_fiat_card', user, self.Rates), edit)
+        else:
+            pass
+
+    def create_ask_6_step(self, user, edit=None):
+        if user.pop_data['fcurrency'] in ['veur', 'vusd']:
+            cards = user.get_card_currency(user.pop_data['fiat'])
+            cards_name = {i.name: 0 for i in cards}
+            user.pop_data.update({'cards_name': cards_name})
+
+            if edit is None:
+                self.send_screen(user, screens.create_asks('get_fiat_card', user, self.Rates))
+            else:
+                self.edit_screen(user, screens.create_asks('get_fiat_card', user, self.Rates), edit)
+        else:
+            pass
