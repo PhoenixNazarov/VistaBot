@@ -27,7 +27,7 @@ time_zones = [
 
 popular_russian_bank = ['Сбербанк', 'Альфа-банк', 'ВТБ', 'Тинькоф']
 popular_belarus_bank = ['Приорбанк', 'Белагропромбанк', 'Беларусьбанк', 'Бел ВЭБ']
-ser_bank = ['PayPal']
+all_banks = popular_russian_bank+popular_belarus_bank+['PayPal']
 card_type = ['VISA', 'MASTER CARD', 'MAESTRO', 'МИР']
 
 http_bot = 't.me/Test_for_phoenix_bot?start='

@@ -10,6 +10,7 @@ import time
 class Config:
     def __init__(self):
         self.Rates = rates.Rates()
+        self.Asks = users.Asks()
         self.Users = users.Users()
         self.Bot = bot.Bot(self)
         self.Admin_panel = admin_panel.Admin_panel(self)
@@ -33,6 +34,7 @@ class Config:
     def saving_base(self):
         while 1:
             self.Users.save()
+            self.Asks.save()
             time.sleep(1)
 
 

@@ -258,7 +258,35 @@ class User:
                 cards.append(i)
         return cards
 
-    # bids
+    # ask
+    def make_ask(self, Rates):
+        ask = Ask()
+        if self.pop_data['fcurrency'] in ['veur', 'vusd']:
+            ask.have_currency = self.pop_data.pop('fcurrency').replace('v', '')
+            ask.get_currency = self.pop_data.pop('scurrency')
+            ask.type = 'vst'
+
+            for i in self.pop_data['cards_name']:
+                if self.pop_data['cards_name'][i]:
+                    for card in self.cards:
+                        if card.name == i:
+                            ask.fiat_cards.append(card)
+
+        else:
+            ask.have_currency = self.pop_data.pop('fcurrency')
+            ask.get_currency = self.pop_data.pop('scurrency').replace('v', '')
+            ask.type = 'fiat'
+
+            for i in self.pop_data['banks']:
+                if self.pop_data['banks'][i]:
+                    ask.fiat_banks.append(i)
+
+        ask.have_currency_count = self.pop_data.pop('count')
+        ask.show_rate = self.pop_data.pop('rate')
+        ask.rate = Rates.get_count_rate(ask.have_currency, ask.get_currency)
+        ask.vst_cards = self.pop_data.pop('vstcard')
+        ask.trade_id_owner = self.trade_id
+        return ask
 
 
 class Card:
@@ -276,6 +304,9 @@ class Card:
         self.bank = ''
 
         self.create()
+
+    def __str__(self):
+        return self.name
 
     def create(self):
         self.create_type = self.config[0]
@@ -325,16 +356,132 @@ class Card:
 
 class Asks:
     def __init__(self):
-        self.__asks = []
+        self.__asks = {}
+        self.path = 'base/asks.json'
+        self.numb = 1
+
+        self.load()
+
+    def add_ask(self, ask):
+        # todo check fool
+        ask.id = self.numb
+        self.numb += 1
+        self.__asks.update({ask.id: ask})
+        return ask
+
+    def load(self):
+        with open(self.path, 'r') as file:
+            dc = json.loads(file.read())
+
+        for i in dc:
+            _ask = Ask()
+            _ask.load_from_json(i)
+            self.__asks.update({i['id']: _ask})
+
+    def save(self):
+        dc = []
+        for i in self.__asks.values():
+            dc.append(i.to_json())
+
+        with open(self.path, 'w') as file:
+            file.write(json.dumps(dc))
+
+    def get_asks(self, trade_id):
+        asks = []
+        for i in self.__asks.values():
+            if i.trade_id_owner == trade_id:
+                asks.append(i)
+        return asks
+
+    def get_ask_from_id(self, id):
+        return self.__asks[id]
+
+    def remove_ask(self, id):
+        return self.__asks.pop(int(id))
 
 
 class Ask:
     def __init__(self):
-        # vst / fiat
+        # user have vst / fiat
         self.type = 'vst'
+        self.trade_id_owner = 0
+        self.id = -1
+
+        self.have_currency_count = 0
+        self.have_currency = ''
+        self.get_currency = ''
+        self.show_rate = 0
+        self.rate = 0
+
+        self.vst_card = []
+
+        # optional
+        self.fiat_cards = []
+        self.fiat_banks = []
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'type': self.type,
+            'trade_id_owner': self.trade_id_owner,
+            'have_currency_count': self.have_currency_count,
+            'have_currency': self.have_currency,
+            'get_currency': self.get_currency,
+            'show_rate': self.show_rate,
+            'rate': self.rate,
+            'vst_card': self.vst_card,
+            'fiat_cards': [i.config for i in self.fiat_cards],
+            'fiat_banks': self.fiat_banks,
+        }
+
+    def load_from_json(self, config):
+        self.id = config['id']
+        self.type = config['type']
+        self.trade_id_owner = config['trade_id_owner']
+        self.have_currency_count = config['have_currency_count']
+        self.have_currency = config['have_currency']
+        self.get_currency = config['get_currency']
+        self.show_rate = config['show_rate']
+        self.rate = config['rate']
+        self.vst_card = config['vst_card']
+        self.fiat_banks = config['fiat_banks']
+
+        for i in config['fiat_cards']:
+            self.fiat_cards.append(Card(i))
+
+    def preview(self):
+        if self.type == 'vst':
+            cards_banks = set([i.bank.lower() for i in self.fiat_cards])
+            cards_banks = '\n'.join(cards_banks)
+
+            text = f'Отдаете: {self.have_currency_count} VST {self.have_currency}\n' \
+                   f'Получаете: {round(self.have_currency_count * self.rate, 2)} {self.get_currency}\n' \
+                   f'Курс: {self.show_rate}\n' \
+                   f'Рейтинг создателя заявки:\n' \
+                   f'Возможные способы получить {self.get_currency}:\n' \
+                   f'{cards_banks}\n' \
+                   f'Часовой пояс: '
+        else:
+            if self.fiat_banks == ['everyone']:
+                banks = 'Любой'
+            else:
+                banks = '\n'.join(self.fiat_banks)
+            print(self.rate)
+            text = f'Отдаете: {self.have_currency_count} {self.have_currency}\n' \
+                   f'Получаете: {round(self.have_currency_count * self.rate)} VST {self.get_currency}\n' \
+                   f'Курс: {self.show_rate}\n' \
+                   f'Рейтинг создателя заявки:\n' \
+                   f'Возможные способы получить {self.get_currency}:\n' \
+                   f'{banks}\n' \
+                   f'Часовой пояс: '
+
+        return text
+
+    def button_text(self):
+        return f'{self.have_currency} {self.have_currency_count} => {self.get_currency} {round(self.have_currency_count * self.rate)} {self.rate}'
 
 
-class Bid:
+class Deal:
     def __init__(self):
         self.status = ''
 

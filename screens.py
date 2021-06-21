@@ -63,7 +63,7 @@ def main_screen(key):
     else:  # main
         text = 'Главное меню:'
         buttons = telebot.types.ReplyKeyboardMarkup(resize_keyboard = True)
-        buttons.row('💵 Создать заявку', '💵 Активные заявки')
+        buttons.row('💵 Активные заявки', '💵 Мои заявки', '💵 Мои сделки')
         buttons.row('💳 Шаблоны моих карт и счетов')
         buttons.row('❓ Поддержка и информация', '👤 Личный кабинет')
 
@@ -366,21 +366,109 @@ def create_asks(key, user, Rates = None):
             buttons.row(button1)
             num += 1
 
-    elif key == 'vst_send':
-        text = f'Выберите карту, с которой вы хотите отправить VST {user.pop_data["vst"]}'
+    elif key == 'get_fiat_banks':
+        text = f'Выберите карты, куда вы можете отправить {user.pop_data["fiat"]}'
         buttons = telebot.types.InlineKeyboardMarkup()
 
+        if sum([i for i in user.pop_data['banks'].values()]):
+            button1 = telebot.types.InlineKeyboardButton(text = 'Продолжить', callback_data = 'ask_next_banks')
+            buttons.row(button1)
+
+        if sum([i for i in user.pop_data['banks'].values()]) != len(user.pop_data['banks']):
+            button1 = telebot.types.InlineKeyboardButton(text = 'Любой банк', callback_data = 'ask_everyone_banks')
+            buttons.row(button1)
+
         num = 0
-        for i in user.get_card_currency:
-            button_text = i
-            if user.pop_data['cards_name'][i] == 1:
-                button_text += ' ✅'
-            button1 = telebot.types.InlineKeyboardButton(text = button_text, callback_data = f'ask_{num}_cards')
+        banks = list(user.pop_data['banks'].keys())
+        # make two column
+        for i in range(len(banks) // 2):
+            button_text1 = banks[i*2]
+            if user.pop_data['banks'][button_text1] == 1:
+                button_text1 += ' ✅'
+
+            button_text2 = banks[i*2+1]
+            if user.pop_data['banks'][button_text2] == 1:
+                button_text2 += ' ✅'
+
+            button1 = telebot.types.InlineKeyboardButton(text = button_text1, callback_data = f'ask_{i*2}_banks')
+            button2 = telebot.types.InlineKeyboardButton(text = button_text2, callback_data = f'ask_{i*2+1}_banks')
+            buttons.row(button1, button2)
+            num += 1
+        if len(banks) % 2 == 1:
+            button_text1 = banks[-1]
+            if user.pop_data['banks'][button_text1] == 1:
+                button_text1 += ' ✅'
+            button1 = telebot.types.InlineKeyboardButton(text = button_text1, callback_data = f'ask_{len(banks) - 1}_banks')
+            buttons.row(button1)
+
+    elif key in ['vst_send', 'get_send']:
+        if key == 'vst_send':
+            text = f'Выберите карту, с которой вы будете отправлять VST {user.pop_data["vst"]}'
+        else:
+            text = f'Выберите карту, на которую вы хотите получить VST {user.pop_data["vst"]}'
+
+        buttons = telebot.types.InlineKeyboardMarkup()
+
+        vst_cards = user.get_card_currency('v'+ user.pop_data['vst'])
+
+        num = 0
+        for i in vst_cards:
+            button1 = telebot.types.InlineKeyboardButton(text = i.name, callback_data = f'ask_{num}_vscard')
             buttons.row(button1)
             num += 1
 
-        
+    elif key == 'preview':
+        text = user.unsave_pop_data['ask'].preview()
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button1 = telebot.types.InlineKeyboardButton(text = 'Опубликовать', callback_data = 'ask_yes_prew')
+        button2 = telebot.types.InlineKeyboardButton(text = 'Отмена', callback_data = 'ask_no_prew')
+        buttons.row(button1,button2)
+
+    elif key == 'public':
+        text = 'Ваша заявка передана на рассмотрение'
+
+    elif key == 'not_public':
+        text = 'Заявка не опубликована'
+
+    return text, buttons
 
 
+def my_asks(key, user, Asks):
+    buttons = None
+    if key == 'main':
+        text = 'Ваши заявки:'
+        asks = Asks.get_asks(user.trade_id)
+        buttons = telebot.types.InlineKeyboardMarkup()
+        for i in asks:
+            button1 = telebot.types.InlineKeyboardButton(text = i.button_text(), callback_data = f'myask_{i.id}_show')
+            buttons.row(button1)
+
+        button1 = telebot.types.InlineKeyboardButton(text = 'Добавить заявку', callback_data = f'myask_add')
+        buttons.row(button1)
+
+    elif key.startswith('show'):
+        id = int(key.replace('show', ''))
+        ask = Asks.get_ask_from_id(id)
+        text = ask.preview()
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button1 = telebot.types.InlineKeyboardButton(text = 'Удалить', callback_data = f'myask_{id}_del')
+        buttons.row(button1)
+        button1 = telebot.types.InlineKeyboardButton(text = 'Назад', callback_data = f'myask')
+        buttons.row(button1)
+
+    elif key.startswith('del_confirm'):
+        id = int(key.replace('del_confirm', ''))
+        ask = Asks.get_ask_from_id(id)
+        text = ask.preview()
+        text += '\n\n Вы уверены, что хотите удалить эту заявку?'
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button1 = telebot.types.InlineKeyboardButton(text = 'Да', callback_data = f'myask_{id}_delconf')
+        buttons.row(button1)
+        button1 = telebot.types.InlineKeyboardButton(text = 'Нет', callback_data = f'myask')
+        buttons.row(button1)
+
+    elif key.startswith('confdel'):
+        id = key.replace('confdel', '')
+        text = f'Ваша заявка <b>{id}</b> была удалена'
 
     return text, buttons
