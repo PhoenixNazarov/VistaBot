@@ -40,6 +40,9 @@ class Bot:
         self.bot.edit_message_text(chat_id = user.tg_id, text = text, reply_markup = buttons, message_id = message_id,
                                    parse_mode = 'HTML')
 
+    def delete_message(self, user, message_id):
+        self.bot.delete_message(user.tg_id, message_id)
+
     def __start_message(self, message):
         user = self.Users.tg_identification(message)
         if user.ban:
@@ -94,6 +97,8 @@ class Bot:
         elif message.text == '💵 Мои заявки':
             user.clear()
             self.send_screen(user, screens.my_asks('main', user, self.Asks))
+        elif message.text == '💵 Активные заявки':
+            self.send_screen(user, screens.show_asks('choose_cur', user, self.Asks))
 
         # user info - EDIT
         elif user.position.startswith('user_edit'):
@@ -228,19 +233,25 @@ class Bot:
 
             elif user.position.endswith('rate'):
                 text = message.text.replace(',', '.')
-                if text.isdigit():
+                try:
                     num = float(text)
                     if num > 0:
                         user.pop_data.update({'rate': num})
                         self.create_ask_5_step(user)
                     else:
                         self.send_screen(user, screens.create_asks('rate_error', user))
-                else:
+                except:
                     self.send_screen(user, screens.create_asks('rate_error', user))
 
             elif user.position.endswith('banks'):
                 user.pop_data['banks'].update({message.text: 1})
                 self.send_screen(user, screens.create_asks('get_fiat_banks', user))
+
+        # show ask
+        elif user.position.startswith('d_ask'):
+            if user.position.endswith('banks'):
+                user.pop_data['d_banks'].update({message.text: 1})
+                self.send_screen(user, screens.show_asks('get_fiat_banks', user, self.Asks))
 
     def __query(self, call):
         user = self.Users.tg_identification(call.message)
@@ -336,7 +347,7 @@ class Bot:
             elif call.data.endswith('bank_byn'):
                 bank = int(call.data.split('_')[1])
                 user.pop_data.update({'bank': services.popular_belarus_bank[bank]})
-                user.pop_data.update({'type': 'account'})
+                user.pop_data.update({'type': 'card'})
                 self.edit_screen(user, screens.card('type_card', user), call.message.id)
                 user.position = 'card_edit_type_card'
 
@@ -395,12 +406,12 @@ class Bot:
                 num = call.data.split('_')[1]
                 if num == 'next':
                     # fool check
-                    if sum([i for i in user.pop_data['ask_bank'].values()]):
+                    if sum([i for i in user.pop_data['banks'].values()]):
                         self.create_ask_6_step(user, call.message.id)
                     else:
                         self.edit_screen(user, screens.create_asks('get_fiat_banks', user), call.message.id)
                 elif num == 'everyone':
-                    user.pop_data['ask_bank'] = {'everyone': 1}
+                    user.pop_data['banks'] = {'everyone': 1}
                     self.create_ask_6_step(user, call.message.id)
                 else:
                     num = int(num)
@@ -443,6 +454,83 @@ class Bot:
 
             else:
                 self.edit_screen(user, screens.my_asks('main', user, self.Asks), call.message.id)
+
+        # find asks
+        elif call.data.startswith('d_ask'):
+            if call.data.endswith('fcurrency'):
+                cur = call.data.split('_')[2]
+                user.pop_data.update({'d_currency': cur})
+                if cur in ['veur', 'vusd']:
+                    user.pop_data.update({'d_type': 'fiat'})
+                    self.edit_screen(user, screens.show_asks('choose_fiat_cur', user, self.Asks), call.message.id)
+                else:
+                    user.pop_data.update({'d_type': 'vst'})
+                    self.edit_screen(user, screens.show_asks('choose_vst_cur', user, self.Asks), call.message.id)
+
+            elif call.data.endswith('scurrency'):
+                cur = call.data.split('_')[2]
+                user.pop_data.update({'d_scurrency': cur})
+                vst_cur, fiat_cur = services.find_vst_fiat(user.pop_data['d_currency'], cur)
+                user.pop_data.update({
+                    'd_vst': vst_cur,
+                    'd_fiat': fiat_cur
+                })
+
+                if user.pop_data['d_type'] == 'fiat':
+                    cards = user.get_card_currency(user.pop_data['d_fiat'])
+                    cards_name = {i.name: 0 for i in cards}
+                    user.pop_data.update({'d_cards_name': cards_name})
+                    self.edit_screen(user, screens.show_asks('get_fiat_card', user, self.Asks), call.message.id)
+                else:
+                    banks = services.all_banks
+                    banks_name = {i: 0 for i in banks}
+                    user.pop_data.update({'d_banks': banks_name})
+                    user.position = 'd_ask_banks'
+                    self.edit_screen(user, screens.show_asks('get_fiat_banks', user, self.Asks), call.message.id)
+
+            elif call.data.endswith('cards'):
+                pos = call.data.split('_')[2]
+                if pos == 'next':
+                    self.show_ask_filter(user, call.message.id)
+                else:
+                    ind = list(user.pop_data['d_cards_name'].keys())[int(pos)]
+                    if user.pop_data['d_cards_name'][ind] == 1:
+                        user.pop_data['d_cards_name'][ind] = 0
+                    else:
+                        user.pop_data['d_cards_name'][ind] = 1
+
+                    self.edit_screen(user, screens.show_asks('get_fiat_card', user, self.Asks), call.message.id)
+
+            elif call.data.endswith('banks'):
+                num = call.data.split('_')[2]
+                if num == 'next':
+                    # fool check
+                    if sum([i for i in user.pop_data['d_banks'].values()]):
+                        self.show_ask_filter(user, call.message.id)
+                    else:
+                        self.edit_screen(user, screens.show_asks('get_fiat_banks', user, self.Asks), call.message.id)
+                elif num == 'everyone':
+                    user.pop_data['d_banks'] = {'everyone': 1}
+                    self.show_ask_filter(user, call.message.id)
+                else:
+                    num = int(num)
+                    ind = list(user.pop_data['d_banks'].keys())[num]
+                    if user.pop_data['d_banks'][ind] == 0:
+                        user.pop_data['d_banks'][ind] = 1
+                    else:
+                        user.pop_data['d_banks'][ind] = 0
+                    self.edit_screen(user, screens.show_asks('get_fiat_banks', user, self.Asks), call.message.id)
+
+            elif call.data.endswith('deal'):
+                num = call.data.split('_')[2]
+                ask = self.Asks.get_ask_from_id(num)
+                if ask.can_show():
+                    self.send_screen(user, screens.show_asks('show_ask', user, self.Asks, ask))
+                else:
+                    self.delete_message(user, call.message.id)
+
+        elif call.data == 'delete':
+            self.delete_message(user, call.message.id)
 
     # userdata
 
@@ -520,3 +608,10 @@ class Bot:
                 self.send_screen(user, screens.create_asks('get_send', user, self.Rates))
             else:
                 self.edit_screen(user, screens.create_asks('get_send', user, self.Rates), edit)
+
+    def show_ask_filter(self, user, message_id):
+        asks = self.Asks.asks_filter(user)
+        if len(asks) == 0:
+            self.edit_screen(user, screens.show_asks('asks_not_found', user, self.Asks), message_id)
+        else:
+            self.edit_screen(user, screens.show_asks('show_asks', user, self.Asks, asks), message_id)

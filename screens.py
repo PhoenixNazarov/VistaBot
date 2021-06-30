@@ -472,3 +472,111 @@ def my_asks(key, user, Asks):
         text = f'Ваша заявка <b>{id}</b> была удалена'
 
     return text, buttons
+
+
+def show_asks(key, user, Asks, Asks_list = None):
+    buttons = None
+
+    if key == 'choose_cur':
+        text = 'Выберите валюту, которую хотите отдать'
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button1 = telebot.types.InlineKeyboardButton(text = 'Vista EUR', callback_data = 'd_ask_veur_fcurrency')
+        button2 = telebot.types.InlineKeyboardButton(text = 'Vista USD', callback_data = 'd_ask_vusd_fcurrency')
+        buttons.row(button1, button2)
+        button1 = telebot.types.InlineKeyboardButton(text = 'RUB', callback_data = 'd_ask_rub_fcurrency')
+        button2 = telebot.types.InlineKeyboardButton(text = 'USD', callback_data = 'd_ask_usd_fcurrency')
+        buttons.row(button1, button2)
+        button1 = telebot.types.InlineKeyboardButton(text = 'EUR', callback_data = 'd_ask_eur_fcurrency')
+        button2 = telebot.types.InlineKeyboardButton(text = 'BYN', callback_data = 'd_ask_byn_fcurrency')
+        buttons.row(button1, button2)
+
+    elif key == 'choose_fiat_cur':
+        text = 'Выберите валюту, которую хотите получить'
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button1 = telebot.types.InlineKeyboardButton(text = 'RUB', callback_data = 'd_ask_rub_scurrency')
+        button2 = telebot.types.InlineKeyboardButton(text = 'USD', callback_data = 'd_ask_usd_scurrency')
+        buttons.row(button1, button2)
+        button1 = telebot.types.InlineKeyboardButton(text = 'EUR', callback_data = 'd_ask_eur_scurrency')
+        button2 = telebot.types.InlineKeyboardButton(text = 'BYN', callback_data = 'd_ask_byn_scurrency')
+        buttons.row(button1, button2)
+
+    elif key == 'choose_vst_cur':
+        text = 'Выберите валюту, которую хотите получить'
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button1 = telebot.types.InlineKeyboardButton(text = 'Vista EUR', callback_data = 'd_ask_veur_scurrency')
+        button2 = telebot.types.InlineKeyboardButton(text = 'Vista USD', callback_data = 'd_ask_vusd_scurrency')
+        buttons.row(button1, button2)
+
+    elif key == 'get_fiat_card':
+        text = f'Выберите карты, куда вы хотите получить {user.pop_data["d_fiat"]}'
+        buttons = telebot.types.InlineKeyboardMarkup()
+
+        if sum([i for i in user.pop_data['d_cards_name'].values()]):
+            button1 = telebot.types.InlineKeyboardButton(text = 'Продолжить', callback_data = 'd_ask_next_cards')
+            buttons.row(button1)
+
+        num = 0
+        for i in user.pop_data['d_cards_name']:
+            button_text = i
+            if user.pop_data['d_cards_name'][i] == 1:
+                button_text += ' ✅'
+            button1 = telebot.types.InlineKeyboardButton(text = button_text, callback_data = f'd_ask_{num}_cards')
+            buttons.row(button1)
+            num += 1
+
+    elif key == 'get_fiat_banks':
+        text = f'Выберите карты, куда вы можете отправить {user.pop_data["d_fiat"]}'
+        buttons = telebot.types.InlineKeyboardMarkup()
+
+        if sum([i for i in user.pop_data['d_banks'].values()]):
+            button1 = telebot.types.InlineKeyboardButton(text = 'Продолжить', callback_data = 'd_ask_next_banks')
+            buttons.row(button1)
+
+        if sum([i for i in user.pop_data['d_banks'].values()]) != len(user.pop_data['d_banks']):
+            button1 = telebot.types.InlineKeyboardButton(text = 'Любой банк', callback_data = 'd_ask_everyone_banks')
+            buttons.row(button1)
+
+        num = 0
+        banks = list(user.pop_data['d_banks'].keys())
+        # make two column
+        for i in range(len(banks) // 2):
+            button_text1 = banks[i * 2]
+            if user.pop_data['d_banks'][button_text1] == 1:
+                button_text1 += ' ✅'
+
+            button_text2 = banks[i * 2 + 1]
+            if user.pop_data['d_banks'][button_text2] == 1:
+                button_text2 += ' ✅'
+
+            button1 = telebot.types.InlineKeyboardButton(text = button_text1, callback_data = f'd_ask_{i * 2}_banks')
+            button2 = telebot.types.InlineKeyboardButton(text = button_text2, callback_data = f'd_ask_{i * 2 + 1}_banks')
+            buttons.row(button1, button2)
+            num += 1
+        if len(banks) % 2 == 1:
+            button_text1 = banks[-1]
+            if user.pop_data['d_banks'][button_text1] == 1:
+                button_text1 += ' ✅'
+            button1 = telebot.types.InlineKeyboardButton(text = button_text1,
+                                                         callback_data = f'd_ask_{len(banks) - 1}_banks')
+            buttons.row(button1)
+
+    elif key == 'asks_not_found':
+        text = 'Заявка по вашему фильтру не найдена'
+
+    elif key == 'show_asks':
+        text = 'Подходящие заявки:'
+        buttons = telebot.types.InlineKeyboardMarkup()
+        for i in Asks_list[:10]:
+            button_text = i.button_text()
+            button = telebot.types.InlineKeyboardButton(text = button_text, callback_data = f'd_ask_{i.id}_deal')
+            buttons.row(button)
+
+    elif key == 'show_ask':
+        text = Asks_list.preview_for_deal()
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button = telebot.types.InlineKeyboardButton(text = 'Принять', callback_data = f'd_ask_{Asks_list.id}_deal')
+        button1 = telebot.types.InlineKeyboardButton(text = 'Не интересно', callback_data = f'delete')
+        buttons.row(button, button1)
+
+
+    return text, buttons

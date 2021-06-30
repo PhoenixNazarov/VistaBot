@@ -16,6 +16,8 @@ class Admin_panel:
 
         self.Users = config.Users
         self.Bot = config.Bot
+        self.Asks = config.Asks
+        self.Data = config.Data
 
     def initiate(self):
         self.set()
@@ -98,6 +100,49 @@ class Admin_panel:
                 user.rating = int(count)
 
             return Response('true')
+
+        @self.app.route("/get_asks", methods = ['POST'])
+        def get_asks():
+            return Response(json.dumps(self.Asks.get_asks_web()))
+
+        @self.app.route("/get_ask", methods = ['POST'])
+        def get_ask():
+            ask_id = int(request.form['id'])
+            ask = self.Asks.get_ask_from_id(ask_id)
+            ret = ask.to_json()
+            ret.update({'web': ask.web()})
+            ret.update({'vst_card': ask.vst_card.collect_full('web')})
+            ret.update({'fiat_cards': [i.collect_full('web') for i in ask.fiat_cards]})
+            ret.update({'fiat_banks': '<br>'.join(ask.fiat_banks)})
+
+            return Response(json.dumps(ret))
+
+        @self.app.route("/allow_ask", methods = ['POST'])
+        def allow_ask():
+            ask_id = int(request.form['ask_id'])
+            ask = self.Asks.get_ask_from_id(ask_id)
+            ask.status = 'ok'
+            ret = '{ok}'
+
+            return Response(json.dumps(ret))
+
+        @self.app.route("/delete_ask", methods = ['POST'])
+        def delete_ask():
+            ask_id = int(request.form['ask_id'])
+            self.Asks.remove_ask(ask_id)
+            ret = '{ok}'
+
+            return Response(json.dumps(ret))
+
+        @self.app.route("/get_settings", methods = ['POST'])
+        def get_settings():
+            return Response(json.dumps(self.Data.to_json()))
+
+        @self.app.route("/set_settings", methods = ['POST'])
+        def set_settings():
+            self.Data.perc_vst = float(request.form['perc_vst'])
+            self.Data.perc_fiat = float(request.form['perc_fiat'])
+            return Response(json.dumps({'ok': 1}))
 
         @self.app.after_request
         def after_request(response):

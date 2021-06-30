@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Пользователи</title>
+    <title>Заявки</title>
 	<!-- Bootstrap Styles-->
     <link href="assets/css/bootstrap.css" rel="stylesheet" />
      <!-- FontAwesome Styles-->
@@ -40,10 +40,13 @@
                         <a href="index.html"><i class="fa fa-dashboard"></i> Dashboard</a>
                     </li>
                     <li>
-                        <a id="users_nav" class="active-menu"><i class="fa fa-users"></i> Пользователи</a>
+                        <a href="users.html"><i class="fa fa-users"></i> Пользователи</a>
                     </li>
                     <li>
-                        <a href="asks.html"><i class="fa fa-tasks"></i> Заявки</a>
+                        <a id="asks_nav" class="active-menu"><i class="fa fa-tasks"></i> Заявки</a>
+                    </li>
+                    <li>
+                        <a href="settings.html"><i class="fa fa-tasks"></i> Заявки</a>
                     </li>
                 </ul>
 
@@ -54,18 +57,19 @@
         <div id="page-wrapper" >
             <div id="page-inner">
 
-                <div id = "users" style="display: none;">
+                <div id = "asks" style="display: none;">
                     <div class="row">
                         <div class="col-md-12">
                             <div class="panel panel-default">
                                 <div class="panel-body">
                                     <div class="table-responsive">
-                                        <table class="table table-striped table-bordered table-hover" id="dataTables-users">
+                                        <table class="table table-striped table-bordered table-hover" id="dataTables-asks">
                                             <thead>
                                                 <tr>
                                                     <th>#</th>
-                                                    <th>tg username</th>
-                                                    <th>фио</th>
+                                                    <th>Владелец</th>
+                                                    <th>Описание</th>
+                                                    <th>Статус</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -79,17 +83,17 @@
                         </div>
                     </div>
                 </div>
-                <div id="user" style="display: none;">
+                <div id="ask" style="display: none;">
                     <div class="row">
                         <div class="col-md-12">
                             <div class="panel panel-default">
                                 <div class="panel-heading">
-                                    Информация о пользователе
+                                    Информация о заявке
                                 </div>
                                 <div class="panel-body">
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <p class="text-center"><b>телеграм</b></p>
+                                            <p class="text-center"><b>основное</b></p>
                                             <table class="table">
                                                 <thead>
                                                     <tr>
@@ -98,49 +102,35 @@
                                                 <tbody>
                                                     <tr>
                                                         <td><b>Id:</b></td>
-                                                        <td id="tg_id"></td>
+                                                        <td id="ask_id"></td>
                                                     </tr>
                                                     <tr>
-                                                        <td><b>Имя:</b></td>
-                                                        <td id="first_name"></td>
+                                                        <td><b>Тип:</b></td>
+                                                        <td id="type"></td>
                                                     </tr>
                                                     <tr>
-                                                        <td><b>Фамилия:</b></td>
-                                                        <td id="last_name"></td>
+                                                        <td><b>Статус:</b></td>
+                                                        <td id="status"></td>
                                                     </tr>
                                                     <tr>
-                                                        <td><b>Username:</b></td>
-                                                        <td id="tg_username"></td>
+                                                        <td><b>Id владельца:</b></td>
+                                                        <td id="id_owner"></td>
                                                     </tr>
                                                     <tr>
-                                                        <td><b>Последняя активность:</b></td>
-                                                        <td id="last_active"></td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-
-                                            <p class="text-center"><b>инфо</b></p>
-                                            <table class="table">
-                                                <thead>
-                                                    <tr>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr>
-                                                        <td><b>Id:</b></td>
-                                                        <td id="trade_id"></td>
+                                                        <td><b>Отдает:</b></td>
+                                                        <td id="have_currency"></td>
                                                     </tr>
                                                     <tr>
-                                                        <td><b>ФИО:</b></td>
-                                                        <td id="fio"></td>
+                                                        <td><b>Получает:</b></td>
+                                                        <td id="get_currency"></td>
                                                     </tr>
                                                     <tr>
-                                                        <td><b>Mail:</b></td>
-                                                        <td id="mail"></td>
+                                                        <td><b>Курс:</b></td>
+                                                        <td id="rate"></td>
                                                     </tr>
                                                     <tr>
-                                                        <td><b>Phone:</b></td>
-                                                        <td id="phone"></td>
+                                                        <td><b>Рейтинг:</b></td>
+                                                        <td id="rating"></td>
                                                     </tr>
                                                     <tr>
                                                         <td><b>Часовой пояс:</b></td>
@@ -152,13 +142,11 @@
                                         </div>
                                         <div class="col-md-6">
                                             <p class="text-center"><b>управление</b></p>
-
                                             <div class="form-group">
-                                                <button id="ban" type="button" class="btn btn-secondary btn btn-block">1</button>
+                                                <button id="allow" style="display: none;" type="button" class="btn btn-primary btn btn-block ">Одобрить</button>
                                             </div>
                                             <div class="form-group">
-                                                <label>Рейтинг</label>
-                                                <input id="rating" class="form-control">
+                                                <button id="delete" type="button" class="btn btn-danger btn btn-block">Удалить</button>
                                             </div>
 
                                         </div>
@@ -167,8 +155,19 @@
                                     <div class="row">
 
                                         <div class="col-md-6">
-                                            <p class="text-center"><b>карты</b></p>
-                                            <table id = "cards" class="table">
+                                            <p class="text-center"><b>vst карта</b></p>
+                                            <table id = "vst_card" class="table">
+                                                <thead>
+                                                    <tr>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p class="text-center"><b id="fiat_name"> </b></p>
+                                            <table id = "fiat" class="table">
                                                 <thead>
                                                     <tr>
                                                     </tr>
@@ -178,21 +177,6 @@
                                             </table>
                                         </div>
 
-                                        <div class="col-md-6">
-                                            <p class="text-center"><b>рефералы</b></p>
-                                            <table id="referrals" class="table">
-                                                <thead>
-                                                    <tr>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr>
-                                                        <td><b>Главный реферал:</b></td>
-                                                        <td id="referral"></td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -219,7 +203,7 @@
 
          <!-- Custom Js -->
     <script src="assets/js/using/data.js"></script>
-    <script src="assets/js/using/users.js"></script>
+    <script src="assets/js/using/asks.js"></script>
     
    
 </body>

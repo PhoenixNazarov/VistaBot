@@ -281,11 +281,14 @@ class User:
                 if self.pop_data['banks'][i]:
                     ask.fiat_banks.append(i)
 
+        ask.show_rate = round(self.pop_data.pop('rate'), 2)
+        ask.rate = Rates.get_count_rate(ask.have_currency, ask.get_currency, ask.show_rate)
+
         ask.have_currency_count = self.pop_data.pop('count')
-        ask.show_rate = self.pop_data.pop('rate')
-        ask.rate = Rates.get_count_rate(ask.have_currency, ask.get_currency)
-        ask.vst_cards = self.pop_data.pop('vstcard')
+        ask.vst_card = Card(self.pop_data.pop('vstcard'))
         ask.trade_id_owner = self.trade_id
+        ask.rating = self.rating
+        ask.time_zone = self.time_zone
         return ask
 
 
@@ -316,7 +319,7 @@ class Card:
         if self.create_type in ['c', 'a', 'b']:
             self.bank = self.config[3]
 
-    def collect_full(self, show = 'tg'):
+    def collect_full(self, show='tg'):
         if self.create_type == 've':
             text = f'{self.name}, Vista EUR\n' \
                    f'{self.config[3]}\n' \
@@ -355,10 +358,12 @@ class Card:
 
 
 class Asks:
-    def __init__(self):
+    def __init__(self, config):
         self.__asks = {}
         self.path = 'base/asks.json'
         self.numb = 1
+
+        self.Rates = config.Rates
 
         self.load()
 
@@ -373,7 +378,9 @@ class Asks:
         with open(self.path, 'r') as file:
             dc = json.loads(file.read())
 
-        for i in dc:
+        self.numb = dc['numb']
+
+        for i in dc['asks']:
             _ask = Ask()
             _ask.load_from_json(i)
             self.__asks.update({i['id']: _ask})
@@ -384,7 +391,31 @@ class Asks:
             dc.append(i.to_json())
 
         with open(self.path, 'w') as file:
-            file.write(json.dumps(dc))
+            file.write(json.dumps({
+                'numb': self.numb,
+                'asks': dc
+            }))
+
+    def asks_filter(self, user):
+        have_cur = user.pop_data['d_currency']
+        get_cur = user.pop_data['d_scurrency']
+        type = 'vst'
+        if have_cur in ['veur', 'vusd']:
+            type = 'fiat'
+        asks = []
+
+        for i in self.__asks.values():
+            if not i.can_show():continue
+
+            if i.type == type:
+                if i.type == 'vst':
+                    if 'v'+i.have_currency == get_cur and i.get_currency == have_cur:
+                        asks.append(i)
+                else:
+                    if i.have_currency == get_cur and 'v'+i.get_currency == have_cur:
+                        asks.append(i)
+
+        return asks
 
     def get_asks(self, trade_id):
         asks = []
@@ -394,16 +425,31 @@ class Asks:
         return asks
 
     def get_ask_from_id(self, id):
-        return self.__asks[id]
+        return self.__asks[int(id)]
 
     def remove_ask(self, id):
         return self.__asks.pop(int(id))
 
+    # for admin_panel
+    def get_asks_web(self):
+        _list = []
+        for i in self.__asks.values():
+            _list.append([i.id, i.trade_id_owner, i.button_text(), i.status])
+        return _list
 
-class Ask:
+
+class Ask_ch:
+    def set_Data(self, Data):
+        self.Data = Data
+        self.Rates = None
+
+
+class Ask(Ask_ch):
     def __init__(self):
+        self.Rates = None
         # user have vst / fiat
         self.type = 'vst'
+        self.status = 'wait_allow'
         self.trade_id_owner = 0
         self.id = -1
 
@@ -413,7 +459,10 @@ class Ask:
         self.show_rate = 0
         self.rate = 0
 
-        self.vst_card = []
+        self.vst_card = None
+
+        self.time_zone = ''
+        self.rating = 0
 
         # optional
         self.fiat_cards = []
@@ -422,6 +471,7 @@ class Ask:
     def to_json(self):
         return {
             'id': self.id,
+            'status': self.status,
             'type': self.type,
             'trade_id_owner': self.trade_id_owner,
             'have_currency_count': self.have_currency_count,
@@ -429,13 +479,16 @@ class Ask:
             'get_currency': self.get_currency,
             'show_rate': self.show_rate,
             'rate': self.rate,
-            'vst_card': self.vst_card,
+            'vst_card': self.vst_card.config,
             'fiat_cards': [i.config for i in self.fiat_cards],
             'fiat_banks': self.fiat_banks,
+            'time_zone': self.time_zone,
+            'rating': self.rating,
         }
 
     def load_from_json(self, config):
         self.id = config['id']
+        self.status = config['status']
         self.type = config['type']
         self.trade_id_owner = config['trade_id_owner']
         self.have_currency_count = config['have_currency_count']
@@ -443,42 +496,128 @@ class Ask:
         self.get_currency = config['get_currency']
         self.show_rate = config['show_rate']
         self.rate = config['rate']
-        self.vst_card = config['vst_card']
+        self.vst_card = Card(config['vst_card'])
         self.fiat_banks = config['fiat_banks']
+        self.time_zone = config['time_zone']
+        self.rating = config['rating']
 
         for i in config['fiat_cards']:
             self.fiat_cards.append(Card(i))
 
+    def get_count(self):
+        return self.have_currency_count * self.rate
+
+    def have_count_w_com(self):
+        if self.type == 'vst':
+            return round(self.have_currency_count + self.have_currency_count * (self.Data.perc_vst / 100), 2)
+        else:
+            return round(self.have_currency_count + self.have_currency_count * (self.Data.perc_fiat / 100), 2)
+
+    def get_count_w_com(self):
+        if self.type == 'fiat':
+            return round(self.get_count() + self.get_count() * (self.Data.perc_vst / 100), 2)
+        else:
+            return round(self.get_count() + self.get_count() * (self.Data.perc_fiat / 100), 2)
+
+    def have_count_com(self):
+        if self.type == 'vst':
+            return round(self.have_currency_count * (self.Data.perc_vst / 100), 2)
+        else:
+            return round(self.have_currency_count * (self.Data.perc_fiat / 100), 2)
+
+    def get_count_com(self):
+        if self.type == 'fiat':
+            return round(self.get_count() * (self.Data.perc_vst / 100), 2)
+        else:
+            return round(self.get_count() * (self.Data.perc_fiat / 100), 2)
+
+    def can_show(self):
+        if self.status == 'ok':
+            return 1
+        else:
+            return 0
+
     def preview(self):
+        sign_have_currency = services.signs[self.have_currency]
+        sign_get_currency = services.signs[self.get_currency]
         if self.type == 'vst':
             cards_banks = set([i.bank.lower() for i in self.fiat_cards])
             cards_banks = '\n'.join(cards_banks)
 
-            text = f'Отдаете: {self.have_currency_count} VST {self.have_currency}\n' \
-                   f'Получаете: {round(self.have_currency_count * self.rate, 2)} {self.get_currency}\n' \
+            text = f'Отдаете: {self.have_count_w_com()} VST {sign_have_currency}\n' \
+                   f'Получаете: {self.get_count_w_com()} {sign_get_currency}\n' \
                    f'Курс: {self.show_rate}\n' \
-                   f'Рейтинг создателя заявки:\n' \
+                   f'Рейтинг создателя заявки: {self.rating}\n' \
                    f'Возможные способы получить {self.get_currency}:\n' \
                    f'{cards_banks}\n' \
-                   f'Часовой пояс: '
+                   f'Часовой пояс: {self.time_zone}'
         else:
             if self.fiat_banks == ['everyone']:
                 banks = 'Любой'
             else:
                 banks = '\n'.join(self.fiat_banks)
             print(self.rate)
-            text = f'Отдаете: {self.have_currency_count} {self.have_currency}\n' \
-                   f'Получаете: {round(self.have_currency_count * self.rate)} VST {self.get_currency}\n' \
+            text = f'Отдаете: {self.have_count_w_com()} {sign_have_currency}\n' \
+                   f'Получаете: {self.get_count_w_com()} VST {sign_get_currency}\n' \
                    f'Курс: {self.show_rate}\n' \
-                   f'Рейтинг создателя заявки:\n' \
+                   f'Рейтинг создателя заявки: {self.rating}\n' \
                    f'Возможные способы получить {self.get_currency}:\n' \
                    f'{banks}\n' \
-                   f'Часовой пояс: '
+                   f'Часовой пояс: {self.time_zone}'
+
+        return text
+
+    def preview_for_deal(self):
+        sign_have_currency = services.signs[self.have_currency]
+        sign_get_currency = services.signs[self.get_currency]
+        if self.type == 'vst':
+            cards_banks = set([i.bank.lower() for i in self.fiat_cards])
+            cards_banks = '\n'.join(cards_banks)
+
+            text = f'Получаете: {self.have_count_w_com()} VST {sign_have_currency}\n' \
+                   f'Отдаете: {self.get_count_w_com()} {sign_get_currency}\n' \
+                   f'Курс: {self.show_rate}\n' \
+                   f'Рейтинг создателя заявки: {self.rating}\n' \
+                   f'Возможные способы получить {self.get_currency}:\n' \
+                   f'{cards_banks}\n' \
+                   f'Часовой пояс: {self.time_zone}'
+        else:
+            if self.fiat_banks == ['everyone']:
+                banks = 'Любой'
+            else:
+                banks = '\n'.join(self.fiat_banks)
+            print(self.rate)
+            text = f'Получаете: {self.have_count_w_com()} {sign_have_currency}\n' \
+                   f'Отдаете: {self.get_count_w_com()} VST {sign_get_currency}\n' \
+                   f'Курс: {self.show_rate}\n' \
+                   f'Рейтинг создателя заявки: {self.rating}\n' \
+                   f'Возможные способы получить {self.get_currency}:\n' \
+                   f'{banks}\n' \
+                   f'Часовой пояс: {self.time_zone}'
 
         return text
 
     def button_text(self):
-        return f'{self.have_currency} {self.have_currency_count} => {self.get_currency} {round(self.have_currency_count * self.rate)} {self.rate}'
+        sign_have_currency = services.signs[self.have_currency]
+        sign_get_currency = services.signs[self.get_currency]
+        if self.type == 'vst':
+            return f'VST {sign_have_currency} {self.have_count_w_com()} ⇒ {sign_get_currency} {self.get_count_w_com()} {self.show_rate}'
+
+        return f'{sign_have_currency} {self.have_count_w_com()} ⇒ VST {sign_get_currency} {self.get_count_w_com()} {self.show_rate}'
+
+    def web(self):
+        if self.type == 'vst':
+            return {
+                'give': f'{self.have_currency_count} + {self.have_count_com()}  VST {self.have_currency}',
+                'get': f'{round(self.get_count(), 2)} + {self.get_count_com()}  {self.get_currency}',
+                'rate': f'({self.show_rate}) {self.rate} '
+            }
+        else:
+            return {
+                'give': f'{self.have_currency_count} + {self.have_count_com()} {self.have_currency}',
+                'get': f'{round(self.get_count(), 2)} + {self.get_count_com()}  VST {self.get_currency}',
+                'rate': f'({self.show_rate}) {self.rate} '
+            }
 
 
 class Deal:

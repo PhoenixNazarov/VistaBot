@@ -11,15 +11,21 @@ class Rates:
         self.rates = {}
 
     def get_rate(self, fiat_cur, vst_cur):
-        if fiat_cur in ['usd', 'eur'] and vst_cur in ['usd', 'eur']:
+        if fiat_cur == 'usd' and vst_cur in 'eur':
             rate = self.eur / self.usd
         else:
             rate = self.rates[vst_cur] / self.rates[fiat_cur]
 
         return round(rate, 2)
 
-    def get_count_rate(self, cur1, cur2):
-        return self.rates[cur1]/self.rates[cur2]
+    def get_count_rate(self, cur_have, cur_need, rate):
+        if cur_have == 'rub':
+            return 1 / rate
+        if cur_have == 'usd' and cur_need == 'eur':
+            return 1 / rate
+        if cur_have == 'byn':
+            return 1 / rate
+        return rate
 
     def updater(self):
         while 1:
