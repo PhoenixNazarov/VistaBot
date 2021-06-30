@@ -580,3 +580,12 @@ def show_asks(key, user, Asks, Asks_list = None):
 
 
     return text, buttons
+
+
+def deal(key, Deal):
+    buttons = None
+    # wait_vst
+    if key == 'wait_vst':
+        text = Deal.
+
+    return text, buttons

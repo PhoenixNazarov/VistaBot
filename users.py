@@ -620,11 +620,34 @@ class Ask(Ask_ch):
             }
 
 
+class Deals:
+    def __init__(self):
+        self.__deals = {}
+
+    def load(self):
+        with open('base/deals.json', 'r') as file:
+            base = json.loads(file.read())
+
+        for i in base:
+            _deal = Deal
+            _deal.load_from_json(i)
+            self.__deals.update({i['id']: _deal})
+
+    def save(self):
+        base = []
+        for i in self.__deals.values():
+            base.append(i.to_json())
+
+        with open('base/deals.json', 'w') as file:
+            file.write(json.dumps(base))
+
+
 class Deal:
     def __init__(self):
+        # wait_vst, wait_vst_proof, wait_fiat, wait_fiat_proof, wait_garant_vst
         self.status = ''
 
-        # users
+        # users, vista - have vista
         self.vista_people = 0
         self.vista_people_vst_card = []
         self.vista_people_fiat_card = []
@@ -638,6 +661,13 @@ class Deal:
         self.count_fiat = 0
         self.rate = 0
 
-        # for part buy
-        self.can_part = False
-        self.min_part = 0
+    # wait_vst
+    def text(self, key):
+        if key == 'vst':
+            return ''
+
+    def to_json(self):
+        return {}
+
+    def load_from_json(self, config):
+        a = config
