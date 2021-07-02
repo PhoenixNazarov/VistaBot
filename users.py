@@ -1,7 +1,7 @@
 import json
 import datetime
 import services
-
+import screens
 
 class Users:
     def __init__(self):
@@ -40,6 +40,11 @@ class Users:
 
     def tg_id_identification(self, id):
         return self.__Users[id]
+
+    def trade_id_identification(self, id):
+        for i in self.__Users:
+            if self.__Users[i].trade_id == id:
+                return self.__Users[i]
 
     def go_referal(self, main_user, ref_id):
         if main_user.referal_to:
@@ -505,7 +510,7 @@ class Ask(Ask_ch):
             self.fiat_cards.append(Card(i))
 
     def get_count(self):
-        return self.have_currency_count * self.rate
+        return round(self.have_currency_count * self.rate,2)
 
     def have_count_w_com(self):
         if self.type == 'vst':
@@ -621,15 +626,92 @@ class Ask(Ask_ch):
 
 
 class Deals:
-    def __init__(self):
+    def __init__(self, config):
         self.__deals = {}
+        self.Asks = config.Asks
+        self.load()
+
+    def make_deal(self, user, Users):
+        ask = self.Asks.get_ask_from_id(user.pop_data.pop('d_ask_id'))
+        if not ask.can_show():
+            return
+
+        deal = Deal()
+        print(user.pop_data['d_type'])
+        type = user.pop_data.pop('d_type')
+        if type == 'vst':
+            banks = []
+            for i in user.pop_data['d_banks']:
+                if user.pop_data['d_banks'][i]:
+                    banks.append(i)
+
+            deal.fiat_people = user.tg_id
+            deal.fiat_people_vst_card = user.pop_data.pop('d_vst')
+            deal.fiat_people_banks = banks
+
+            deal.vista_people = Users.trade_id_identification(ask.trade_id_owner).tg_id
+            deal.vista_people_vst_card = ask.vst_card.config
+            deal.vista_people_fiat_card = [i.config for i in ask.fiat_cards]
+            deal.vista_currency = 'VST ' + services.signs[ask.have_currency]
+            deal.fiat_currency = services.signs[ask.get_currency]
+            deal.vista_count = ask.have_count_w_com()
+            deal.vista_count_without_com = ask.have_currency_count
+            deal.fiat_count = ask.get_count_w_com()
+
+        else:
+            cards = []
+            for i in user.pop_data['d_cards_name']:
+                if user.pop_data['d_cards_name'][i]:
+                    for card in user.cards:
+                        if card.name == i:
+                            cards.append(card.config)
+
+            deal.vista_people = user.tg_id
+            deal.vista_people_vst_card = user.pop_data.pop('d_vst')
+            deal.vista_people_fiat_card = cards
+
+            deal.fiat_people = Users.trade_id_identification(ask.trade_id_owner).tg_id
+            deal.fiat_people_vst_card = ask.vst_card.config
+            deal.fiat_people_banks = ask.fiat_banks
+            deal.vista_currency = 'VST ' + services.signs[ask.get_currency]
+            deal.fiat_currency = services.signs[ask.have_currency]
+            deal.vista_count = ask.get_count_w_com()
+            deal.vista_count_without_com = ask.have_currency_count
+            deal.fiat_count = ask.have_count_w_com()
+
+        deal.reload_cards()
+
+        # info
+        deal.rate = ask.rate
+        deal.owner_id = ask.trade_id_owner
+        deal.trade_id = user.trade_id
+        deal.id = ask.id
+
+        # ask.type = 'in_process'
+
+        self.__deals.update({ask.id: deal})
+
+        return deal
+
+    def get_deal(self, id):
+        return self.__deals[int(id)]
+
+    def get_deals_for_user(self, id):
+        deals = []
+        for i in self.__deals.values():
+            if i.owner_id == id or i.trade_id == id:
+                deals.append(i)
+        return deals
+
+    def remove_deal(self, id):
+        return self.__deals.pop(int(id))
 
     def load(self):
         with open('base/deals.json', 'r') as file:
             base = json.loads(file.read())
 
         for i in base:
-            _deal = Deal
+            _deal = Deal()
             _deal.load_from_json(i)
             self.__deals.update({i['id']: _deal})
 
@@ -641,33 +723,163 @@ class Deals:
         with open('base/deals.json', 'w') as file:
             file.write(json.dumps(base))
 
+    def get_deals_for_web(self):
+        _list = []
+        for i in self.__deals.values():
+            _list.append([i.id, i.admin_description(), i.status])
+        return _list
+
 
 class Deal:
     def __init__(self):
         # wait_vst, wait_vst_proof, wait_fiat, wait_fiat_proof, wait_garant_vst
-        self.status = ''
+        self.status = 'wait_vst'
+        self.id = -1
+        self.ask_id = 0
 
-        # users, vista - have vista
+        # users, vista - have vista (A)
         self.vista_people = 0
         self.vista_people_vst_card = []
         self.vista_people_fiat_card = []
+        self.vista_currency = ''
+        self.vista_count = 0
+        self.vista_count_without_com = 0
 
+        # (B)
         self.fiat_people = 0
         self.fiat_people_vst_card = []
         self.fiat_people_banks = []
+        self.fiat_currency = ''
+        self.fiat_count = 0
 
         # info
-        self.count_vst = 0
-        self.count_fiat = 0
         self.rate = 0
+        self.owner_id = 0
+        self.trade_id = 0
+
+    def reload_cards(self):
+        self.vista_people_vst_card = Card(self.vista_people_vst_card)
+        self.fiat_people_vst_card = Card(self.fiat_people_vst_card)
+        cards = []
+        for i in self.vista_people_fiat_card:
+            cards.append(Card(i))
+        self.vista_people_fiat_card = cards
+
+    def button_text(self):
+        return f'№{self.id} {self.vista_count} {self.vista_currency} ⇒ {self.fiat_count} {self.fiat_currency}'
 
     # wait_vst
-    def text(self, key):
-        if key == 'vst':
-            return ''
+    def logic_message(self, user):
+        user_id = user.tg_id
+        if self.status == 'wait_vst':
+            if user_id == self.vista_people:
+                return screens.deal('1_A', self)
+            else:
+                return screens.deal('1_B', self)
+
+        elif self.status == 'wait_vst_proof':
+            if user_id == self.vista_people:
+                return screens.deal('2_A', self)
+            else:
+                return screens.deal('2_B', self)
+
+        elif self.status == 'wait_fiat':
+            if user_id == self.vista_people:
+                return screens.deal('3_A', self)
+            else:
+                return screens.deal('3_B', self)
+
+        elif self.status == 'wait_fiat_proof':
+            if user_id == self.vista_people:
+                return screens.deal('4_A', self)
+            else:
+                return screens.deal('4_B', self)
+
+        elif self.status == 'wait_garant_vst':
+            if user_id == self.vista_people:
+                return screens.deal('5_A', self)
+            else:
+                return screens.deal('5_B', self)
+
+        elif self.status == 'end':
+            if user_id == self.vista_people:
+                return screens.deal('6_A', self)
+            else:
+                return screens.deal('6_B', self)
+
+    def logic_control(self, key, user):
+        if user == 'admin':
+            # 2
+            if key == 'garant_accept':
+                if self.status == 'wait_vst_proof':
+                    self.status = 'wait_fiat'
+                    return 1
+            # 5
+            if key == 'garant_send':
+                if self.status == 'wait_garant_vst':
+                    self.status = 'end'
+                    return 1
+
+        elif user.tg_id == self.vista_people:
+            # 1
+            if key == 'vst_sended':
+                if self.status == 'wait_vst':
+                    self.status = 'wait_vst_proof'
+                    return 1
+            # 4
+            elif key == 'fiat_accept':
+                if self.status == 'wait_fiat_proof':
+                    self.status = 'wait_garant_vst'
+                    return 1
+
+        elif user.tg_id == self.fiat_people:
+            # 3
+            if key == 'fiat_sended':
+                if self.status == 'wait_fiat':
+                    self.status = 'wait_fiat_proof'
+                    return 1
+
 
     def to_json(self):
-        return {}
+        return {
+            'status': self.status,
+            'id': self.id,
+            'ask_id': self.ask_id,
+            'vista_people': self.vista_people,
+            'vista_people_vst_card': self.vista_people_vst_card.config,
+            'vista_people_fiat_card': [i.config for i in self.vista_people_fiat_card],
+            'vista_currency': self.vista_currency,
+            'vista_count': self.vista_count,
+            'fiat_people': self.fiat_people,
+            'fiat_people_vst_card': self.fiat_people_vst_card.config,
+            'fiat_people_banks': self.fiat_people_banks,
+            'fiat_currency': self.fiat_currency,
+            'fiat_count': self.fiat_count,
+            'rate': self.rate,
+            'owner_id': self.owner_id,
+            'trade_id': self.trade_id,
+            'vista_count_without_com': self.vista_count_without_com
+        }
 
     def load_from_json(self, config):
-        a = config
+        self.status = config['status']
+        self.id = config['id']
+        self.ask_id = config['ask_id']
+        self.vista_people = config['vista_people']
+        self.vista_people_vst_card = config['vista_people_vst_card']
+        self.vista_people_fiat_card = config['vista_people_fiat_card']
+        self.vista_currency = config['vista_currency']
+        self.vista_count = config['vista_count']
+        self.fiat_people = config['fiat_people']
+        self.fiat_people_vst_card = config['fiat_people_vst_card']
+        self.fiat_people_banks = config['fiat_people_banks']
+        self.fiat_currency = config['fiat_currency']
+        self.fiat_count = config['fiat_count']
+        self.rate = config['rate']
+        self.owner_id = config['owner_id']
+        self.trade_id = config['trade_id']
+        self.vista_count_without_com = config['vista_count_without_com']
+        self.reload_cards()
+
+    def admin_description(self):
+        return f'{self.vista_count} VST {self.vista_currency} ⇒ {self.fiat_count} {self.fiat_currency} {self.rate}'

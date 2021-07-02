@@ -10,8 +10,8 @@ import json
 
 class Data:
     def __init__(self):
-        self.perc_vst = 5
-        self.perc_fiat = 5
+        self.perc_vst = 1
+        self.perc_fiat = 0.5
         self.faq = []
 
         self.load()
@@ -45,6 +45,7 @@ class Config:
         self.Data = Data()
         self.Rates = rates.Rates()
         self.Asks = users.Asks(self)
+        self.Deals = users.Deals(self)
         self.Users = users.Users()
         self.Bot = bot.Bot(self)
         self.Admin_panel = admin_panel.Admin_panel(self)
@@ -73,6 +74,7 @@ class Config:
             self.Users.save()
             self.Asks.save()
             self.Data.save()
+            self.Deals.save()
             time.sleep(1)
 
 

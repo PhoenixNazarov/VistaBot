@@ -275,7 +275,7 @@ def card(key, user):
     return text, buttons
 
 
-def create_asks(key, user, Rates = None):
+def create_asks(key, user, Rates=None):
     buttons = None
     if key == 'choose_f':
         text = 'Выберите валюту, которую хотите отдать'
@@ -329,7 +329,7 @@ def create_asks(key, user, Rates = None):
             'cbrf_rate': rate,
             'fiat': fiat_cur,
             'vst': vst_cur
-            })
+        })
         text = f'Какой курс хотите использовать? Курс ЦБРФ {rate}'
 
         buttons = telebot.types.InlineKeyboardMarkup()
@@ -352,7 +352,7 @@ def create_asks(key, user, Rates = None):
     elif key == 'get_fiat_card':
         text = f'Выберите карты, куда вы хотите получить {user.pop_data["fiat"]}'
         buttons = telebot.types.InlineKeyboardMarkup()
-        
+
         if sum([i for i in user.pop_data['cards_name'].values()]):
             button1 = telebot.types.InlineKeyboardButton(text = 'Продолжить', callback_data = 'ask_next_cards')
             buttons.row(button1)
@@ -382,23 +382,24 @@ def create_asks(key, user, Rates = None):
         banks = list(user.pop_data['banks'].keys())
         # make two column
         for i in range(len(banks) // 2):
-            button_text1 = banks[i*2]
+            button_text1 = banks[i * 2]
             if user.pop_data['banks'][button_text1] == 1:
                 button_text1 += ' ✅'
 
-            button_text2 = banks[i*2+1]
+            button_text2 = banks[i * 2 + 1]
             if user.pop_data['banks'][button_text2] == 1:
                 button_text2 += ' ✅'
 
-            button1 = telebot.types.InlineKeyboardButton(text = button_text1, callback_data = f'ask_{i*2}_banks')
-            button2 = telebot.types.InlineKeyboardButton(text = button_text2, callback_data = f'ask_{i*2+1}_banks')
+            button1 = telebot.types.InlineKeyboardButton(text = button_text1, callback_data = f'ask_{i * 2}_banks')
+            button2 = telebot.types.InlineKeyboardButton(text = button_text2, callback_data = f'ask_{i * 2 + 1}_banks')
             buttons.row(button1, button2)
             num += 1
         if len(banks) % 2 == 1:
             button_text1 = banks[-1]
             if user.pop_data['banks'][button_text1] == 1:
                 button_text1 += ' ✅'
-            button1 = telebot.types.InlineKeyboardButton(text = button_text1, callback_data = f'ask_{len(banks) - 1}_banks')
+            button1 = telebot.types.InlineKeyboardButton(text = button_text1,
+                                                         callback_data = f'ask_{len(banks) - 1}_banks')
             buttons.row(button1)
 
     elif key in ['vst_send', 'get_send']:
@@ -409,7 +410,7 @@ def create_asks(key, user, Rates = None):
 
         buttons = telebot.types.InlineKeyboardMarkup()
 
-        vst_cards = user.get_card_currency('v'+ user.pop_data['vst'])
+        vst_cards = user.get_card_currency('v' + user.pop_data['vst'])
 
         num = 0
         for i in vst_cards:
@@ -422,7 +423,7 @@ def create_asks(key, user, Rates = None):
         buttons = telebot.types.InlineKeyboardMarkup()
         button1 = telebot.types.InlineKeyboardButton(text = 'Опубликовать', callback_data = 'ask_yes_prew')
         button2 = telebot.types.InlineKeyboardButton(text = 'Отмена', callback_data = 'ask_no_prew')
-        buttons.row(button1,button2)
+        buttons.row(button1, button2)
 
     elif key == 'public':
         text = 'Ваша заявка передана на рассмотрение'
@@ -474,7 +475,7 @@ def my_asks(key, user, Asks):
     return text, buttons
 
 
-def show_asks(key, user, Asks, Asks_list = None):
+def show_asks(key, user, Asks, Asks_list=None):
     buttons = None
 
     if key == 'choose_cur':
@@ -549,7 +550,8 @@ def show_asks(key, user, Asks, Asks_list = None):
                 button_text2 += ' ✅'
 
             button1 = telebot.types.InlineKeyboardButton(text = button_text1, callback_data = f'd_ask_{i * 2}_banks')
-            button2 = telebot.types.InlineKeyboardButton(text = button_text2, callback_data = f'd_ask_{i * 2 + 1}_banks')
+            button2 = telebot.types.InlineKeyboardButton(text = button_text2,
+                                                         callback_data = f'd_ask_{i * 2 + 1}_banks')
             buttons.row(button1, button2)
             num += 1
         if len(banks) % 2 == 1:
@@ -574,10 +576,43 @@ def show_asks(key, user, Asks, Asks_list = None):
     elif key == 'show_ask':
         text = Asks_list.preview_for_deal()
         buttons = telebot.types.InlineKeyboardMarkup()
-        button = telebot.types.InlineKeyboardButton(text = 'Принять', callback_data = f'd_ask_{Asks_list.id}_deal')
+        button = telebot.types.InlineKeyboardButton(text = 'Принять',
+                                                    callback_data = f'd_ask_{Asks_list.id}_dealAccept')
         button1 = telebot.types.InlineKeyboardButton(text = 'Не интересно', callback_data = f'delete')
         buttons.row(button, button1)
 
+    elif key == 'vst_send':
+        if user.pop_data['d_type'] == 'vst':
+            text = f'Выберите карту, с которой вы будете отправлять VST {user.pop_data["d_vst"]}'
+        else:
+            text = f'Выберите карту, на которую вы хотите получить VST {user.pop_data["d_vst"]}'
+
+        buttons = telebot.types.InlineKeyboardMarkup()
+
+        vst_cards = user.get_card_currency('v' + user.pop_data['d_vst'])
+
+        num = 0
+        for i in vst_cards:
+            button1 = telebot.types.InlineKeyboardButton(text = i.name, callback_data = f'd_ask_{num}_vscard')
+            buttons.row(button1)
+            num += 1
+
+    return text, buttons
+
+
+def my_deal(key, user, Deals):
+    buttons = None
+    if key == 'my_deal':
+        deals = Deals.get_deals_for_user(user.trade_id)
+        if len(deals) == 0:
+            text = 'У вас нет активных сделок'
+        else:
+            text = 'Ваши активные сделки'
+            buttons = telebot.types.InlineKeyboardMarkup()
+            for i in deals:
+                button = telebot.types.InlineKeyboardButton(text = i.button_text(),
+                                                            callback_data = f'mydeal_{i.id}_show')
+                buttons.row(button)
 
     return text, buttons
 
@@ -585,7 +620,50 @@ def show_asks(key, user, Asks, Asks_list = None):
 def deal(key, Deal):
     buttons = None
     # wait_vst
-    if key == 'wait_vst':
-        text = Deal.
+    if key == '1_A':
+        text = f'Переведите {Deal.vista_count} {Deal.vista_currency} на номер гаранта'
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button = telebot.types.InlineKeyboardButton(text = 'Перевёл', callback_data = f'deal_{Deal.id}_vst_sended')
+        buttons.row(button)
+        button = telebot.types.InlineKeyboardButton(text = 'Переведу через 15', callback_data = f'deal_{15}_vst_after')
+        buttons.row(button)
+    elif key == '1_B':
+        text = 'Ожидайте перевода пользователя A гаранту.'
+
+    # wait_vst_proof
+    elif key == '2_A':
+        text = 'Вы перевели деньги гаранту, ожидайте подтверждение'
+    elif key == '2_B':
+        text = 'Пользователь A перевел деньги гаранту, ожидайте подтверждения от гаранта.'
+
+    # wait_fiat
+    elif key == '3_A':
+        text = 'Гарант подтвердил перевод денег. Ожидайте пока вам переведут деньги на счет'
+    elif key == '3_B':
+        text = 'Гарант подтвердил перевод денег. Переведите деньги на счет пользователя A'
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button = telebot.types.InlineKeyboardButton(text = 'Перевёл', callback_data = f'deal_{Deal.id}_fiat_sended')
+        buttons.row(button)
+
+    # wait_fiat_proof
+    elif key == '4_A':
+        text = 'Пользователь B перевёл вам деньги. Подтвердите их получение'
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button = telebot.types.InlineKeyboardButton(text = 'Получил', callback_data = f'deal_{Deal.id}_fiat_accept')
+        buttons.row(button)
+    elif key == '4_B':
+        text = 'Вы подтвердили перевод фиантной валюты, ожидайте подтверждения от пользователя A'
+
+    elif key == '5_A':
+        text = 'Спасибо за участие в сделке, ожидайте, пока админ отправит вам Vst'
+    elif key == '5_B':
+        text = 'Вы подтвердили перевод фиантной валюты, Спасибо за участие в сделке'
+
+    elif key == '6_A':
+        text = 'Спасибо за участие в сделке, админ отправил вам VST'
+    elif key == '6_B':
+        text = 'Вы подтвердили перевод фиантной валюты, Спасибо за участие в сделке'
+        return None
+
 
     return text, buttons

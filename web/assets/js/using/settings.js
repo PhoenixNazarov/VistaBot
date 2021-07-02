@@ -24,6 +24,36 @@ function get_faqs(data){
     }
 }
 
+function save_faqs(){
+    let names = $('.faq_name');
+    let text = $('.faq_text');
+
+    let faqs = []
+
+    for (let i = 0; i < names.length; i++){
+        faqs.push([$(names[i]).val(), $(text[i]).val()]);
+    }
+    return faqs;
+}
+
+function bind_faq_remove(){
+    $('.faq_remove').bind('click',
+        function(){
+            $(this).closest("tr").remove();
+        });
+}
+
+function bind_faq_add(button){
+    button.bind('click',
+        function(){
+            str ='<tr><td><button type="button" class="btn btn-danger faq_remove">-</button></td>\n' +
+                 '<td><input class="form-control faq_name"></td>\n' +
+                 '<td><textarea class="form-control faq_text" rows="3"></textarea></td></tr>';
+            $('#faq_table').append(str);
+            bind_faq_remove();
+    });
+}
+
 $(document).ready(function(){
 
     function get_settings(){
@@ -39,8 +69,8 @@ $(document).ready(function(){
             }
     }
 
-    get_settings();
+    // get_settings();
     bind_save($('#save'));
-
+    bind_faq_add($('#faq_add'))
 
 });

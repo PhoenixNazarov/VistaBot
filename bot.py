@@ -15,6 +15,7 @@ class Bot:
         self.Users = config.Users
         self.Rates = config.Rates
         self.Asks = config.Asks
+        self.Deals = config.Deals
 
     def initiate(self):
         @self.bot.message_handler(commands = ['start'])
@@ -98,7 +99,11 @@ class Bot:
             user.clear()
             self.send_screen(user, screens.my_asks('main', user, self.Asks))
         elif message.text == '💵 Активные заявки':
+            user.clear()
             self.send_screen(user, screens.show_asks('choose_cur', user, self.Asks))
+        elif message.text == '💵 Мои сделки':
+            user.clear()
+            self.send_screen(user, screens.my_deal('my_deal', user, self.Deals))
 
         # user info - EDIT
         elif user.position.startswith('user_edit'):
@@ -529,8 +534,52 @@ class Bot:
                 else:
                     self.delete_message(user, call.message.id)
 
+            elif call.data.endswith('dealAccept'):
+                num = call.data.split('_')[2]
+                user.pop_data.update({'d_ask_id': num})
+                self.edit_screen(user, screens.show_asks('vst_send', user, self.Asks), call.message.id)
+
+            elif call.data.endswith('vscard'):
+                num = call.data.split('_')[2]
+                vst_cards = user.get_card_currency('v' + user.pop_data['d_vst'])
+                card = vst_cards[int(num)]
+                user.pop_data.update({'d_vst': card.config})
+                deal = self.Deals.make_deal(user, self.Users)
+                self.delete_message(user, call.message.id)
+                self.notification_deal_users(deal)
+
+        # my deals
+        elif call.data.startswith('mydeal'):
+            if call.data.endswith('show'):
+                num = call.data.split('_')[1]
+                deal = self.Deals.get_deal(num)
+                self.edit_screen(user, deal.logic_message(user), call.message.id)
+
+        # deal control
+        elif call.data.startswith('deal'):
+            num = call.data.split('_')[1]
+            deal = self.Deals.get_deal(num)
+            user_A = self.Users.tg_id_identification(deal.vista_people)
+            user_B = self.Users.tg_id_identification(deal.fiat_people)
+
+            if call.data.endswith('vst_sended'):
+                if deal.logic_control('vst_sended', user):
+                    self.edit_screen(user_A, deal.logic_message(user_A), call.message.id)
+                    self.send_screen(user_B, deal.logic_message(user_B))
+
+            elif call.data.endswith('fiat_sended'):
+                if deal.logic_control('fiat_sended', user):
+                    self.send_screen(user_A, deal.logic_message(user_A))
+                    self.edit_screen(user_B, deal.logic_message(user_B), call.message.id)
+
+            elif call.data.endswith('fiat_accept'):
+                if deal.logic_control('fiat_accept', user):
+                    self.edit_screen(user_A, deal.logic_message(user_A), call.message.id)
+                    self.send_screen(user_B, deal.logic_message(user_B))
+
         elif call.data == 'delete':
             self.delete_message(user, call.message.id)
+
 
     # userdata
 
@@ -615,3 +664,17 @@ class Bot:
             self.edit_screen(user, screens.show_asks('asks_not_found', user, self.Asks), message_id)
         else:
             self.edit_screen(user, screens.show_asks('show_asks', user, self.Asks, asks), message_id)
+
+    # deal
+    def notification_deal_users(self, deal):
+        user_A = self.Users.tg_id_identification(deal.vista_people)
+        user_B = self.Users.tg_id_identification(deal.fiat_people)
+
+        screen_A = deal.logic_message(user_A)
+        screen_B = deal.logic_message(user_B)
+        if screen_A:
+            print('1ok')
+            self.send_screen(user_A, screen_A)
+        if screen_B:
+            print('2ok')
+            self.send_screen(user_B, screen_B)

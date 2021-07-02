@@ -18,6 +18,7 @@ class Admin_panel:
         self.Bot = config.Bot
         self.Asks = config.Asks
         self.Data = config.Data
+        self.Deals = config.Deals
 
     def initiate(self):
         self.set()
@@ -48,6 +49,7 @@ class Admin_panel:
                 else:
                     return Response('NOT_AUTH')
 
+        # USERS
         @self.app.route("/get_users", methods = ['POST'])
         def get_users():
             return Response(self.Users.get_users())
@@ -101,6 +103,7 @@ class Admin_panel:
 
             return Response('true')
 
+        # ASKS
         @self.app.route("/get_asks", methods = ['POST'])
         def get_asks():
             return Response(json.dumps(self.Asks.get_asks_web()))
@@ -134,6 +137,47 @@ class Admin_panel:
 
             return Response(json.dumps(ret))
 
+        # DEALS
+        @self.app.route("/get_deals", methods = ['POST'])
+        def get_deals():
+            return Response(json.dumps(self.Deals.get_deals_for_web()))
+
+        @self.app.route("/get_deal", methods = ['POST'])
+        def get_deal():
+            id = request.form['id']
+            Deal = self.Deals.get_deal(id)
+            acp = Deal.to_json()
+            acp['a_vst_card'] = Deal.vista_people_vst_card.collect_full('web')
+            acp['b_vst_card'] = Deal.fiat_people_vst_card.collect_full('web')
+            return Response(json.dumps(acp))
+
+        @self.app.route("/remove_deal", methods = ['POST'])
+        def remove_deal():
+            id = request.form['id']
+            Deal = self.Deals.remove_deal(id)
+            return Response(json.dumps('ok'))
+
+        @self.app.route("/accept_garant_deal", methods = ['POST'])
+        def accept_garant_deal():
+            id = request.form['id']
+            Deal = self.Deals.get_deal(id)
+            Deal.logic_control('garant_accept', 'admin')
+
+            self.Bot.notification_deal_users(Deal)
+
+            return Response(json.dumps('ok'))
+
+        @self.app.route("/send_garant_deal", methods = ['POST'])
+        def send_garant_deal():
+            id = request.form['id']
+            Deal = self.Deals.get_deal(id)
+            Deal.logic_control('garant_send', 'admin')
+
+            self.Bot.notification_deal_users(Deal)
+
+            return Response(json.dumps('ok'))
+
+        # SETTINGS
         @self.app.route("/get_settings", methods = ['POST'])
         def get_settings():
             return Response(json.dumps(self.Data.to_json()))
