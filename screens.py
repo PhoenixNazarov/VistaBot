@@ -617,53 +617,85 @@ def my_deal(key, user, Deals):
     return text, buttons
 
 
-def deal(key, Deal):
+def deal(key, Deal, optional = None):
     buttons = None
     # wait_vst
+    text = f'<b>Сделка {Deal.button_text()}</b>\n'
     if key == '1_A':
-        text = f'Переведите {Deal.vista_count} {Deal.vista_currency} на номер гаранта'
+        text += f'Переведите {Deal.vista_count} {Deal.vista_currency} на счет гаранта' \
+               f'\n{Deal.garant_card()}'
         buttons = telebot.types.InlineKeyboardMarkup()
         button = telebot.types.InlineKeyboardButton(text = 'Перевёл', callback_data = f'deal_{Deal.id}_vst_sended')
         buttons.row(button)
-        button = telebot.types.InlineKeyboardButton(text = 'Переведу через 15', callback_data = f'deal_{15}_vst_after')
-        buttons.row(button)
+        if Deal.vista_send_over == 0:
+            button = telebot.types.InlineKeyboardButton(text = '15 мин', callback_data = f'deal_{Deal.id}_{15}_vst_after')
+            button1 = telebot.types.InlineKeyboardButton(text = '30 мин', callback_data = f'deal_{Deal.id}_{30}_vst_after')
+            button2 = telebot.types.InlineKeyboardButton(text = '1 час', callback_data = f'deal_{Deal.id}_{60}_vst_after')
+            buttons.row(button, button1, button2)
     elif key == '1_B':
-        text = 'Ожидайте перевода пользователя A гаранту.'
+        text += 'Ожидайте перевода пользователя A гаранту.'
 
     # wait_vst_proof
     elif key == '2_A':
-        text = 'Вы перевели деньги гаранту, ожидайте подтверждение'
+        text += 'Вы перевели деньги гаранту, ожидайте подтверждение'
     elif key == '2_B':
-        text = 'Пользователь A перевел деньги гаранту, ожидайте подтверждения от гаранта.'
+        text += 'Пользователь A перевел деньги гаранту, ожидайте подтверждения от гаранта.'
 
     # wait_fiat
     elif key == '3_A':
-        text = 'Гарант подтвердил перевод денег. Ожидайте пока вам переведут деньги на счет'
+        text += 'Гарант подтвердил перевод денег. Ожидайте пока вам переведут деньги на счет'
     elif key == '3_B':
-        text = 'Гарант подтвердил перевод денег. Переведите деньги на счет пользователя A'
+        text += 'Гарант подтвердил перевод денег. Переведите деньги на счет пользователя A'
+        buttons = telebot.types.InlineKeyboardMarkup()
+        k = 0
+        for i in Deal.vista_people_fiat_card:
+            button = telebot.types.InlineKeyboardButton(text = i.bank, callback_data = f'deal_{Deal.id}_{k}_show_card')
+            k+=1
+            buttons.row(button)
+    elif key == '3_B_card':
+        text += f'Гарант подтвердил перевод денег. Переведите деньги на счет пользователя A. ' \
+                f'\nВы выбрали эту карту:' \
+                f'\n{optional.collect_for_deal()}'
+        k = Deal.vista_people_fiat_card.index(optional)
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button = telebot.types.InlineKeyboardButton(text = 'Переведу на эту карту', callback_data = f'deal_{Deal.id}_{k}_choosed_card')
+        buttons.row(button)
+        button = telebot.types.InlineKeyboardButton(text = 'К картам', callback_data = f'deal_{Deal.id}_see_card')
+        buttons.row(button)
+    elif key == '3_B_with_card':
+        text += f'Гарант подтвердил перевод денег. Переведите деньги на счет пользователя A. ' \
+                f'\nВы выбрали эту карту:' \
+                f'\n{Deal.fiat_choose_card.collect_for_deal()}'
         buttons = telebot.types.InlineKeyboardMarkup()
         button = telebot.types.InlineKeyboardButton(text = 'Перевёл', callback_data = f'deal_{Deal.id}_fiat_sended')
         buttons.row(button)
+        if Deal.fiat_send_over == 0:
+            button = telebot.types.InlineKeyboardButton(text = '15 мин', callback_data = f'deal_{Deal.id}_{15}_fiat_after')
+            button1 = telebot.types.InlineKeyboardButton(text = '30 мин', callback_data = f'deal_{Deal.id}_{30}_fiat_after')
+            button2 = telebot.types.InlineKeyboardButton(text = '1 час', callback_data = f'deal_{Deal.id}_{60}_fiat_after')
+            buttons.row(button, button1, button2)
 
     # wait_fiat_proof
     elif key == '4_A':
-        text = 'Пользователь B перевёл вам деньги. Подтвердите их получение'
+        text += f'Пользователь B перевёл вам деньги. ' \
+                f'\n На эту карту: {Deal.fiat_choose_card.collect_for_deal()}' \
+                f'\nПодтвердите их получение'
         buttons = telebot.types.InlineKeyboardMarkup()
         button = telebot.types.InlineKeyboardButton(text = 'Получил', callback_data = f'deal_{Deal.id}_fiat_accept')
         buttons.row(button)
     elif key == '4_B':
-        text = 'Вы подтвердили перевод фиантной валюты, ожидайте подтверждения от пользователя A'
+        text += 'Вы подтвердили перевод фиантной валюты, ожидайте подтверждения от пользователя A'
 
     elif key == '5_A':
-        text = 'Спасибо за участие в сделке, ожидайте, пока админ отправит вам Vst'
+        text += 'Вы подтвердили перевод фиантной валюты, Спасибо за участие в сделке'
     elif key == '5_B':
-        text = 'Вы подтвердили перевод фиантной валюты, Спасибо за участие в сделке'
+        text += 'Спасибо за участие в сделке, ожидайте, пока админ отправит вам Vst'
 
     elif key == '6_A':
-        text = 'Спасибо за участие в сделке, админ отправил вам VST'
-    elif key == '6_B':
-        text = 'Вы подтвердили перевод фиантной валюты, Спасибо за участие в сделке'
+        text += 'Спасибо за участие в сделке, админ отправил вам VST'
         return None
+    elif key == '6_B':
+        text += 'Вы подтвердили перевод фиантной валюты, Спасибо за участие в сделке'
 
 
     return text, buttons

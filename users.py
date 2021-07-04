@@ -3,6 +3,7 @@ import datetime
 import services
 import screens
 
+
 class Users:
     def __init__(self):
         self.__Users = {}
@@ -276,6 +277,9 @@ class User:
                     for card in self.cards:
                         if card.name == i:
                             ask.fiat_cards.append(card)
+                            break
+                    else:
+                        1/0
 
         else:
             ask.have_currency = self.pop_data.pop('fcurrency')
@@ -338,7 +342,7 @@ class Card:
         elif self.create_type == 'c':
             text = f'{self.name}, Карта, {self.config[2]}\n' \
                    f'{self.config[3]}, {self.config[4]}\n' \
-                   f'{self.config[5]}, {self.config[6]}'\
+                   f'{self.config[5]}, {self.config[6]}'
 
         elif self.create_type == 'a':
             text = f'{self.name}, Счёт, {self.config[2]}\n' \
@@ -360,6 +364,39 @@ class Card:
             return text
         elif show == 'web':
             return text.replace('\n', '<br>')
+
+    def collect_for_deal(self):
+        if self.create_type == 've':
+            text = f'Vista EUR\n' \
+                   f'{self.config[3]}\n' \
+                   f'{self.config[4]}'
+
+        elif self.create_type == 'vu':
+            text = f'Vista USD\n' \
+                   f'{self.config[3]}\n' \
+                   f'{self.config[4]}'
+
+        elif self.create_type == 'c':
+            text = f'Карта, {self.config[2]}\n' \
+                   f'{self.config[3]}, {self.config[4]}\n' \
+                   f'{self.config[5]}, {self.config[6]}'
+
+        elif self.create_type == 'a':
+            text = f'Счёт, {self.config[2]}\n' \
+                   f'{self.config[3]}\n' \
+                   f'Бик: {self.config[4]}\n' \
+                   f'Номер счёта: {self.config[5]}\n' \
+                   f'{self.config[6]}'
+
+        elif self.create_type == 'p':
+            text = f'PayPal, {self.config[2]}\n' \
+                   f'{self.config[3]}'
+
+        else:
+            text = f'BYN\n' \
+                   f'{self.config[3]}, {self.config[4]}\n' \
+                   f'{self.config[5], self.config[6]}'
+        return text
 
 
 class Asks:
@@ -405,20 +442,48 @@ class Asks:
         have_cur = user.pop_data['d_currency']
         get_cur = user.pop_data['d_scurrency']
         type = 'vst'
+        banks = []
         if have_cur in ['veur', 'vusd']:
+            cards_name = user.pop_data['d_cards_name']
+            for i in cards_name:
+                if cards_name[i]:
+                    for card in user.cards:
+                        print(card.name,i)
+                        if card.name == i:
+                            banks.append(card.bank.lower())
+                            break
+                    else:
+                        1/0
             type = 'fiat'
+        else:
+            for i in user.pop_data['d_banks']:
+                if user.pop_data['d_banks'][i]:
+                    banks.append(i.lower())
+
         asks = []
 
         for i in self.__asks.values():
-            if not i.can_show():continue
+            if not i.can_show(): continue
 
             if i.type == type:
                 if i.type == 'vst':
-                    if 'v'+i.have_currency == get_cur and i.get_currency == have_cur:
-                        asks.append(i)
+                    if 'v' + i.have_currency == get_cur and i.get_currency == have_cur:
+                        if 'everyone' in user.pop_data['d_banks']:
+                            asks.append(i)
+                        else:
+                            for bank in banks:
+                                if any([bank in card.bank.lower() for card in i.fiat_cards]):
+                                    asks.append(i)
+                                    break
                 else:
-                    if i.have_currency == get_cur and 'v'+i.get_currency == have_cur:
-                        asks.append(i)
+                    if i.have_currency == get_cur and 'v' + i.get_currency == have_cur:
+                        if 'everyone' in i.fiat_banks:
+                            asks.append(i)
+                        else:
+                            for bank in i.fiat_banks:
+                                if any([bank.lower() in x for x in banks]):
+                                    asks.append(i)
+                                    break
 
         return asks
 
@@ -510,7 +575,7 @@ class Ask(Ask_ch):
             self.fiat_cards.append(Card(i))
 
     def get_count(self):
-        return round(self.have_currency_count * self.rate,2)
+        return round(self.have_currency_count * self.rate, 2)
 
     def have_count_w_com(self):
         if self.type == 'vst':
@@ -637,7 +702,6 @@ class Deals:
             return
 
         deal = Deal()
-        print(user.pop_data['d_type'])
         type = user.pop_data.pop('d_type')
         if type == 'vst':
             banks = []
@@ -665,6 +729,9 @@ class Deals:
                     for card in user.cards:
                         if card.name == i:
                             cards.append(card.config)
+                            break
+                    else:
+                        1/0
 
             deal.vista_people = user.tg_id
             deal.vista_people_vst_card = user.pop_data.pop('d_vst')
@@ -687,9 +754,8 @@ class Deals:
         deal.trade_id = user.trade_id
         deal.id = ask.id
 
-        # ask.type = 'in_process'
-
         self.__deals.update({ask.id: deal})
+        self.Asks.remove_ask(ask.id)
 
         return deal
 
@@ -730,7 +796,12 @@ class Deals:
         return _list
 
 
-class Deal:
+class Deal_ch:
+    def set_data(self):
+        self.Data = None
+
+
+class Deal(Deal_ch):
     def __init__(self):
         # wait_vst, wait_vst_proof, wait_fiat, wait_fiat_proof, wait_garant_vst
         self.status = 'wait_vst'
@@ -744,6 +815,8 @@ class Deal:
         self.vista_currency = ''
         self.vista_count = 0
         self.vista_count_without_com = 0
+        self.vista_send_over = 0
+        self.vista_last_notification = ''
 
         # (B)
         self.fiat_people = 0
@@ -751,6 +824,9 @@ class Deal:
         self.fiat_people_banks = []
         self.fiat_currency = ''
         self.fiat_count = 0
+        self.fiat_send_over = 0
+        self.fiat_last_notification = ''
+        self.fiat_choose_card = []
 
         # info
         self.rate = 0
@@ -768,9 +844,19 @@ class Deal:
     def button_text(self):
         return f'№{self.id} {self.vista_count} {self.vista_currency} ⇒ {self.fiat_count} {self.fiat_currency}'
 
-    # wait_vst
-    def logic_message(self, user):
+    def garant_card(self):
+        if '$' in self.vista_currency:
+            return self.Data.card_usd
+        else:
+            return self.Data.card_eur
+
+    def logic_message(self, user, optional=None):
         user_id = user.tg_id
+        if user_id == self.vista_people:
+            self.vista_last_notification = datetime.datetime.now().strftime('%H:%M %d.%m.%Y')
+        else:
+            self.fiat_last_notification = datetime.datetime.now().strftime('%H:%M %d.%m.%Y')
+
         if self.status == 'wait_vst':
             if user_id == self.vista_people:
                 return screens.deal('1_A', self)
@@ -787,7 +873,13 @@ class Deal:
             if user_id == self.vista_people:
                 return screens.deal('3_A', self)
             else:
-                return screens.deal('3_B', self)
+                if optional is not None:
+                    if optional[0] == 'show':
+                        return screens.deal('3_B_card', self, optional[1])
+                elif not self.fiat_choose_card:
+                    return screens.deal('3_B', self)
+                else:
+                    return screens.deal('3_B_with_card', self)
 
         elif self.status == 'wait_fiat_proof':
             if user_id == self.vista_people:
@@ -839,8 +931,12 @@ class Deal:
                     self.status = 'wait_fiat_proof'
                     return 1
 
-
     def to_json(self):
+        if self.fiat_choose_card:
+            fiat_choose_card = self.fiat_choose_card.config
+        else:
+            fiat_choose_card = []
+
         return {
             'status': self.status,
             'id': self.id,
@@ -858,7 +954,12 @@ class Deal:
             'rate': self.rate,
             'owner_id': self.owner_id,
             'trade_id': self.trade_id,
-            'vista_count_without_com': self.vista_count_without_com
+            'vista_count_without_com': self.vista_count_without_com,
+            'vista_send_over': self.vista_send_over,
+            'vista_last_notification': self.vista_last_notification,
+            'fiat_send_over': self.fiat_send_over,
+            'fiat_last_notification': self.fiat_last_notification,
+            'fiat_choose_card': fiat_choose_card,
         }
 
     def load_from_json(self, config):
@@ -879,6 +980,13 @@ class Deal:
         self.owner_id = config['owner_id']
         self.trade_id = config['trade_id']
         self.vista_count_without_com = config['vista_count_without_com']
+        self.vista_send_over = config['vista_send_over']
+        self.vista_last_notification = config['vista_last_notification']
+        self.fiat_send_over = config['fiat_send_over']
+        self.fiat_last_notification = config['fiat_last_notification']
+        self.fiat_choose_card = config['fiat_choose_card']
+        if self.fiat_choose_card:
+            self.fiat_choose_card = Card(self.fiat_choose_card)
         self.reload_cards()
 
     def admin_description(self):

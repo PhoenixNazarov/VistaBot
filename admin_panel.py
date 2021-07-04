@@ -149,6 +149,9 @@ class Admin_panel:
             acp = Deal.to_json()
             acp['a_vst_card'] = Deal.vista_people_vst_card.collect_full('web')
             acp['b_vst_card'] = Deal.fiat_people_vst_card.collect_full('web')
+            acp['g_vst_card'] = Deal.garant_card().replace('\n','<br>')
+            acp['a_trade_id'] = self.Users.tg_id_identification(Deal.vista_people).trade_id
+            acp['b_trade_id'] = self.Users.tg_id_identification(Deal.fiat_people).trade_id
             return Response(json.dumps(acp))
 
         @self.app.route("/remove_deal", methods = ['POST'])
@@ -175,6 +178,26 @@ class Admin_panel:
 
             self.Bot.notification_deal_users(Deal)
 
+            self.Deals.remove_deal(Deal.id)
+
+            return Response(json.dumps('ok'))
+
+        @self.app.route("/notification_deal", methods = ['POST'])
+        def notification_deal():
+            id = request.form['id']
+            pos = request.form['position']
+            Deal = self.Deals.get_deal(id)
+            if pos == 'A':
+                user_A = self.Users.tg_id_identification(Deal.vista_people)
+                screen_A = Deal.logic_message(user_A)
+                if screen_A:
+                    self.Bot.send_screen(user_A, screen_A)
+            else:
+                user_B = self.Users.tg_id_identification(Deal.fiat_people)
+                screen_B = Deal.logic_message(user_B)
+                if screen_B:
+                    self.Bot.send_screen(user_B, screen_B)
+
             return Response(json.dumps('ok'))
 
         # SETTINGS
@@ -186,6 +209,10 @@ class Admin_panel:
         def set_settings():
             self.Data.perc_vst = float(request.form['perc_vst'])
             self.Data.perc_fiat = float(request.form['perc_fiat'])
+            self.Data.faq = json.loads(request.form['faq'])
+            self.Data.card_usd = request.form['card_usd']
+            self.Data.card_eur = request.form['card_eur']
+
             return Response(json.dumps({'ok': 1}))
 
         @self.app.after_request

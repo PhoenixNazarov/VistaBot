@@ -7,7 +7,10 @@ function bind_save(button){
             $.post(url+"set_settings",
             {
                 "perc_vst": $('#perc_vst').val(),
-                "perc_fiat": $('#perc_fiat').val()
+                "perc_fiat": $('#perc_fiat').val(),
+                "card_usd": $('#card_vst_usd').val(),
+                "card_eur": $('#card_vst_eur').val(),
+                "faq": JSON.stringify(save_faqs())
             },
             onAjaxSuccess);
             function onAjaxSuccess(data){
@@ -18,10 +21,19 @@ function bind_save(button){
 }
 
 function get_faqs(data){
-    let table = $('#ask_table')
-    for (let i = 0; i < data.length; i++){
-        let format = `<td><td></td></td>`
+    let table = $('#faq_table')
+    for (let i = 0; i< data.length; i++){
+        str ='<tr><td><button type="button" class="btn btn-danger faq_remove">-</button></td>\n' +
+             '<td><input class="form-control faq_name"></td>\n' +
+             '<td><textarea class="form-control faq_text" rows="3"></textarea></td></tr>';
+        table.append(str);
+
+        let names = $('.faq_name');
+        let texts = $('.faq_text');
+        $(names[ names.length - 1 ]).val(data[i][0]);
+        $(texts[ texts.length - 1]).val(data[i][1]);
     }
+    bind_faq_remove();
 }
 
 function save_faqs(){
@@ -66,10 +78,13 @@ $(document).ready(function(){
 
                 $('#perc_vst').val(data.perc_vst);
                 $('#perc_fiat').val(data.perc_fiat);
+                $('#card_vst_usd').val(data.card_usd);
+                $('#card_vst_eur').val(data.card_eur);
+                get_faqs(data.faq);
             }
     }
 
-    // get_settings();
+    get_settings();
     bind_save($('#save'));
     bind_faq_add($('#faq_add'))
 

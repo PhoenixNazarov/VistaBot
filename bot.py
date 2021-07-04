@@ -1,8 +1,7 @@
-import calendar
+import time
 
 import telebot
 
-import users
 import screens
 
 import services
@@ -540,6 +539,7 @@ class Bot:
                 self.edit_screen(user, screens.show_asks('vst_send', user, self.Asks), call.message.id)
 
             elif call.data.endswith('vscard'):
+                print('lets_go1')
                 num = call.data.split('_')[2]
                 vst_cards = user.get_card_currency('v' + user.pop_data['d_vst'])
                 card = vst_cards[int(num)]
@@ -577,9 +577,33 @@ class Bot:
                     self.edit_screen(user_A, deal.logic_message(user_A), call.message.id)
                     self.send_screen(user_B, deal.logic_message(user_B))
 
+            elif call.data.endswith('vst_after'):
+                minutes = int(call.data.split('_')[2])
+                deal.vista_send_over = int(time.time() + minutes*60)
+                self.edit_screen(user_A, deal.logic_message(user_A), call.message.id)
+
+            # choose card and set timer
+            elif call.data.endswith('show_card'):
+                card = int(call.data.split('_')[2])
+                card = deal.vista_people_fiat_card[card]
+                self.edit_screen(user_B, deal.logic_message(user_B, ['show',card]), call.message.id)
+
+            elif call.data.endswith('see_card'):
+                self.edit_screen(user_B, deal.logic_message(user_B), call.message.id)
+
+            elif call.data.endswith('choosed_card'):
+                card = int(call.data.split('_')[2])
+                card = deal.vista_people_fiat_card[card]
+                deal.fiat_choose_card = card
+                self.edit_screen(user_B, deal.logic_message(user_B), call.message.id)
+
+            elif call.data.endswith('fiat_after'):
+                minutes = int(call.data.split('_')[2])
+                deal.fiat_send_over = int(time.time() + minutes * 60)
+                self.edit_screen(user_B, deal.logic_message(user_B), call.message.id)
+
         elif call.data == 'delete':
             self.delete_message(user, call.message.id)
-
 
     # userdata
 
