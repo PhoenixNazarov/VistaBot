@@ -103,6 +103,9 @@ class Users:
         if user is None:
             return False
 
+    def get_count(self):
+        return len(self.__Users)
+
 
 class User:
     def __init__(self):
@@ -485,6 +488,8 @@ class Asks:
                                     asks.append(i)
                                     break
 
+        asks = sorted(asks, key = lambda x: x.rate, reverse = True)
+
         return asks
 
     def get_asks(self, trade_id):
@@ -506,6 +511,9 @@ class Asks:
         for i in self.__asks.values():
             _list.append([i.id, i.trade_id_owner, i.button_text(), i.status])
         return _list
+
+    def get_count(self):
+        return len(self.__asks)
 
 
 class Ask_ch:
@@ -755,7 +763,7 @@ class Deals:
         deal.id = ask.id
 
         self.__deals.update({ask.id: deal})
-        self.Asks.remove_ask(ask.id)
+        self.Asks.remove_ask(ask.id) #todo remove
 
         return deal
 
@@ -794,6 +802,9 @@ class Deals:
         for i in self.__deals.values():
             _list.append([i.id, i.admin_description(), i.status])
         return _list
+
+    def get_count(self):
+        return len(self.__deals)
 
 
 class Deal_ch:

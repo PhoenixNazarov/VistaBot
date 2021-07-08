@@ -8,11 +8,11 @@ import services
 class Admin_panel:
     def __init__(self, config):
         self.username = 'admin'
-        self.password = ''
+        self.password = 'hk~|mpe?'
 
         self.app = Flask(__name__)
 
-        self.auth = ['127.0.0.1']
+        self.auth = []
 
         self.Users = config.Users
         self.Bot = config.Bot
@@ -48,6 +48,14 @@ class Admin_panel:
                     pass
                 else:
                     return Response('NOT_AUTH')
+
+        @self.app.route("/index", methods = ['POST'])
+        def index():
+            return Response(json.dumps({
+                'users': self.Users.get_count(),
+                'asks': self.Asks.get_count(),
+                'deals': self.Deals.get_count(),
+            }))
 
         # USERS
         @self.app.route("/get_users", methods = ['POST'])
@@ -178,7 +186,7 @@ class Admin_panel:
 
             self.Bot.notification_deal_users(Deal)
 
-            self.Deals.remove_deal(Deal.id)
+            self.Deals.remove_deal(Deal.id) #todo remove deal
 
             return Response(json.dumps('ok'))
 

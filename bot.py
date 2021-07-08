@@ -9,7 +9,9 @@ import services
 
 class Bot:
     def __init__(self, config):
-        self.token = '1229678012:AAELEl3SUr3arUWH5sQD2jP6njscOxGZS_c'
+        # self.token = '1229678012:AAELEl3SUr3arUWH5sQD2jP6njscOxGZS_c'
+        self.token = '1002352718:AAGPhDTnKyeF6dB7Zdsm5Yceu_1BKk_b9Do'
+
         self.bot = telebot.TeleBot(self.token)
         self.Users = config.Users
         self.Rates = config.Rates
@@ -23,11 +25,17 @@ class Bot:
 
         @self.bot.message_handler(content_types = ['text'])
         def message_oper(message):
-            self.__message(message)
+            try:
+                self.__message(message)
+            except:
+                pass
 
         @self.bot.callback_query_handler(func = lambda call: True)
         def query_oper(call):
-            self.__query(call)
+            try:
+                self.__query(call)
+            except:
+                pass
 
         self.bot.polling(none_stop = True, interval = 0)
 
