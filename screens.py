@@ -568,10 +568,26 @@ def show_asks(key, user, Asks, Asks_list=None):
     elif key == 'show_asks':
         text = 'Подходящие заявки:'
         buttons = telebot.types.InlineKeyboardMarkup()
-        for i in Asks_list[:10]:
-            button_text = i.button_text()
+
+        index = user.pop_data['filter']['index']
+
+        for i in Asks_list[10 * index: 10 * (index + 1)]:
+            button_text = i.button_text_reverse()
             button = telebot.types.InlineKeyboardButton(text = button_text, callback_data = f'd_ask_{i.id}_deal')
             buttons.row(button)
+
+        max_index = len(Asks_list)
+        max_index = max_index // 10 + int(max_index % 10 != 0)
+        if max_index != 1:
+            button1 = telebot.types.InlineKeyboardButton(text = '<=', callback_data = f'd_ask_prev')
+            button3 = telebot.types.InlineKeyboardButton(text = f'{index + 1}/{max_index}', callback_data = f'none')
+            button2 = telebot.types.InlineKeyboardButton(text = '=>', callback_data = f'd_ask_next')
+            if index == 0:
+                buttons.row(button3, button2)
+            elif index == max_index -1:
+                buttons.row(button1, button3)
+            else:
+                buttons.row(button1, button3, button2)
 
     elif key == 'show_ask':
         text = Asks_list.preview_for_deal()
@@ -617,20 +633,25 @@ def my_deal(key, user, Deals):
     return text, buttons
 
 
-def deal(key, Deal, optional = None):
+def deal(key, Deal, optional=None):
     buttons = None
+    helpButtons = True
+
     # wait_vst
     text = f'<b>Сделка {Deal.button_text()}</b>\n'
     if key == '1_A':
         text += f'Переведите {Deal.vista_count} {Deal.vista_currency} на счет гаранта' \
-               f'\n{Deal.garant_card()}'
+                f'\n{Deal.garant_card()}'
         buttons = telebot.types.InlineKeyboardMarkup()
         button = telebot.types.InlineKeyboardButton(text = 'Перевёл', callback_data = f'deal_{Deal.id}_vst_sended')
         buttons.row(button)
         if Deal.vista_send_over == 0:
-            button = telebot.types.InlineKeyboardButton(text = '15 мин', callback_data = f'deal_{Deal.id}_{15}_vst_after')
-            button1 = telebot.types.InlineKeyboardButton(text = '30 мин', callback_data = f'deal_{Deal.id}_{30}_vst_after')
-            button2 = telebot.types.InlineKeyboardButton(text = '1 час', callback_data = f'deal_{Deal.id}_{60}_vst_after')
+            button = telebot.types.InlineKeyboardButton(text = '15 мин',
+                                                        callback_data = f'deal_{Deal.id}_{15}_vst_after')
+            button1 = telebot.types.InlineKeyboardButton(text = '30 мин',
+                                                         callback_data = f'deal_{Deal.id}_{30}_vst_after')
+            button2 = telebot.types.InlineKeyboardButton(text = '1 час',
+                                                         callback_data = f'deal_{Deal.id}_{60}_vst_after')
             buttons.row(button, button1, button2)
     elif key == '1_B':
         text += 'Ожидайте перевода пользователя A гаранту.'
@@ -650,7 +671,7 @@ def deal(key, Deal, optional = None):
         k = 0
         for i in Deal.vista_people_fiat_card:
             button = telebot.types.InlineKeyboardButton(text = i.bank, callback_data = f'deal_{Deal.id}_{k}_show_card')
-            k+=1
+            k += 1
             buttons.row(button)
     elif key == '3_B_card':
         text += f'Гарант подтвердил перевод денег. Переведите деньги на счет пользователя A. ' \
@@ -658,7 +679,8 @@ def deal(key, Deal, optional = None):
                 f'\n{optional.collect_for_deal()}'
         k = Deal.vista_people_fiat_card.index(optional)
         buttons = telebot.types.InlineKeyboardMarkup()
-        button = telebot.types.InlineKeyboardButton(text = 'Переведу на эту карту', callback_data = f'deal_{Deal.id}_{k}_choosed_card')
+        button = telebot.types.InlineKeyboardButton(text = 'Переведу на эту карту',
+                                                    callback_data = f'deal_{Deal.id}_{k}_choosed_card')
         buttons.row(button)
         button = telebot.types.InlineKeyboardButton(text = 'К картам', callback_data = f'deal_{Deal.id}_see_card')
         buttons.row(button)
@@ -670,9 +692,12 @@ def deal(key, Deal, optional = None):
         button = telebot.types.InlineKeyboardButton(text = 'Перевёл', callback_data = f'deal_{Deal.id}_fiat_sended')
         buttons.row(button)
         if Deal.fiat_send_over == 0:
-            button = telebot.types.InlineKeyboardButton(text = '15 мин', callback_data = f'deal_{Deal.id}_{15}_fiat_after')
-            button1 = telebot.types.InlineKeyboardButton(text = '30 мин', callback_data = f'deal_{Deal.id}_{30}_fiat_after')
-            button2 = telebot.types.InlineKeyboardButton(text = '1 час', callback_data = f'deal_{Deal.id}_{60}_fiat_after')
+            button = telebot.types.InlineKeyboardButton(text = '15 мин',
+                                                        callback_data = f'deal_{Deal.id}_{15}_fiat_after')
+            button1 = telebot.types.InlineKeyboardButton(text = '30 мин',
+                                                         callback_data = f'deal_{Deal.id}_{30}_fiat_after')
+            button2 = telebot.types.InlineKeyboardButton(text = '1 час',
+                                                         callback_data = f'deal_{Deal.id}_{60}_fiat_after')
             buttons.row(button, button1, button2)
 
     # wait_fiat_proof
@@ -697,5 +722,39 @@ def deal(key, Deal, optional = None):
     elif key == '6_B':
         text += 'Вы подтвердили перевод фиантной валюты, Спасибо за участие в сделке'
 
+    elif key == 'cancel':
+        text += 'Вы уверены, что хотите отменить сделку?'
+        helpButtons = False
+
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button1 = telebot.types.InlineKeyboardButton(text = 'Да', callback_data = f'deal_{Deal.id}_cancel_accept')
+        button2 = telebot.types.InlineKeyboardButton(text = 'Нет', callback_data = f'deal_{Deal.id}_none')
+        buttons.row(button1, button2)
+    elif key == 'cancel_accept':
+        text += 'Заявка отменена, ожидайте отмены администратора'
+
+    elif key == 'moder':
+        text += 'Вы уверены, что что-то произошло не так и хотите чтобы с вами связался модератор?'
+        helpButtons = False
+
+        buttons = telebot.types.InlineKeyboardMarkup()
+        button1 = telebot.types.InlineKeyboardButton(text = 'Да', callback_data = f'deal_{Deal.id}_moder_accept')
+        button2 = telebot.types.InlineKeyboardButton(text = 'Нет', callback_data = f'deal_{Deal.id}_none')
+        buttons.row(button1, button2)
+    elif key == 'moder_accept':
+        text += 'Заявка поставлена на паузу, ожидайте, когда вам напишет модератор'
+
+    if buttons and helpButtons:
+        button1 = telebot.types.InlineKeyboardButton(text = 'Отменить', callback_data = f'deal_{Deal.id}_cancel')
+        button2 = telebot.types.InlineKeyboardButton(text = 'Помощь модерации', callback_data = f'deal_{Deal.id}_moder')
+        buttons.row(button1, button2)
+
+    return text, buttons
+
+
+def referral(key, user=None, commission=None, commissionCurrency=None):
+    buttons = None
+    if key == 'bonus':
+        text = f'На ваш счет начислено {commission} {commissionCurrency}'
 
     return text, buttons

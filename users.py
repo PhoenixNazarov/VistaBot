@@ -106,6 +106,22 @@ class Users:
     def get_count(self):
         return len(self.__Users)
 
+    def referralBonus(self, user, deal):
+        if user.referal_to:
+            referralUser = self.__Users[user.referal_to]
+
+            commission = (deal.vista_count - deal.vista_count_without_com) * services.referral_bonus
+
+            if deal.vista_currency == 'vusd':  # todo check
+                referralUser.vusd += commission
+                commissionCurrency = 'Vista $'
+            else:
+                referralUser.veur += commission
+                commissionCurrency = 'Vista €'
+
+            return commission, referralUser, commissionCurrency
+        return None, None, None
+
 
 class User:
     def __init__(self):
@@ -137,6 +153,9 @@ class User:
         self.referal_list = []
         self.referal_to = False
 
+        self.vuer = 0
+        self.vusd = 0
+
     def load_from_json(self, _json):
         # add new stat
         if 'last_active' not in _json:
@@ -158,6 +177,8 @@ class User:
         self.referal_list = _json['referal_list']
         self.referal_to = _json['referal_to']
         self.last_active = _json['last_active']
+        self.vuer = _json['vuer']
+        self.vusd = _json['vusd']
 
         for i in _json['cards']:
             self.cards.append(Card(i))
@@ -180,7 +201,9 @@ class User:
             'cards': [i.config for i in self.cards],
             'referal_list': self.referal_list,
             'referal_to': self.referal_to,
-            'last_active': self.last_active
+            'last_active': self.last_active,
+            'vuer': self.vuer,
+            'vusd': self.vusd
         }
 
     def check_tg_data(self, message):
@@ -302,6 +325,39 @@ class User:
         ask.rating = self.rating
         ask.time_zone = self.time_zone
         return ask
+
+    def CreateFilter(self):
+        have_cur = self.pop_data['d_currency']
+        type = 'vst'
+        banks = []
+        if have_cur in ['veur', 'vusd']:
+            cards_name = self.pop_data['d_cards_name']
+            for i in cards_name:
+                if cards_name[i]:
+                    for card in self.cards:
+                        print(card.name, i)
+                        if card.name == i:
+                            banks.append(card.bank.lower())
+                            break
+                    else:
+                        1 / 0
+            type = 'fiat'
+        else:
+            for i in self.pop_data['d_banks']:
+                if self.pop_data['d_banks'][i]:
+                    banks.append(i.lower())
+
+        self.pop_data.update({
+            'filter': {
+                'have_cur': have_cur,
+                'get_cur': self.pop_data['d_scurrency'],
+                'type': type,
+                'banks': banks,
+                'index': 0,
+                'id': self.trade_id
+            }
+        })
+        return self.pop_data['filter']
 
 
 class Card:
@@ -441,37 +497,23 @@ class Asks:
                 'asks': dc
             }))
 
-    def asks_filter(self, user):
-        have_cur = user.pop_data['d_currency']
-        get_cur = user.pop_data['d_scurrency']
-        type = 'vst'
-        banks = []
-        if have_cur in ['veur', 'vusd']:
-            cards_name = user.pop_data['d_cards_name']
-            for i in cards_name:
-                if cards_name[i]:
-                    for card in user.cards:
-                        print(card.name,i)
-                        if card.name == i:
-                            banks.append(card.bank.lower())
-                            break
-                    else:
-                        1/0
-            type = 'fiat'
-        else:
-            for i in user.pop_data['d_banks']:
-                if user.pop_data['d_banks'][i]:
-                    banks.append(i.lower())
+    def asks_filter(self, filter):
+        have_cur = filter['have_cur']
+        get_cur = filter['get_cur']
+        type = filter['type']
+        banks = filter['banks']
+        tg_id = filter['id']
 
         asks = []
 
         for i in self.__asks.values():
             if not i.can_show(): continue
+            if i.trade_id_owner == tg_id: continue
 
             if i.type == type:
                 if i.type == 'vst':
                     if 'v' + i.have_currency == get_cur and i.get_currency == have_cur:
-                        if 'everyone' in user.pop_data['d_banks']:
+                        if 'everyone' in banks:
                             asks.append(i)
                         else:
                             for bank in banks:
@@ -488,7 +530,7 @@ class Asks:
                                     asks.append(i)
                                     break
 
-        asks = sorted(asks, key = lambda x: x.rate, reverse = True)
+        asks = sorted(asks, key = lambda x: x.rate)
 
         return asks
 
@@ -683,6 +725,14 @@ class Ask(Ask_ch):
 
         return f'{sign_have_currency} {self.have_count_w_com()} ⇒ VST {sign_get_currency} {self.get_count_w_com()} {self.show_rate}'
 
+    def button_text_reverse(self):
+        sign_have_currency = services.signs[self.have_currency]
+        sign_get_currency = services.signs[self.get_currency]
+        if self.type == 'vst':
+            return f'{sign_get_currency} {self.get_count_w_com()} ⇒ VST {sign_have_currency} {self.have_count_w_com()} {self.show_rate}'
+
+        return f'VST {sign_get_currency} {self.get_count_w_com()} ⇒ {sign_have_currency} {self.have_count_w_com()} {self.show_rate}'
+
     def web(self):
         if self.type == 'vst':
             return {
@@ -762,6 +812,8 @@ class Deals:
         deal.trade_id = user.trade_id
         deal.id = ask.id
 
+        deal.ask = ask.to_json()
+
         self.__deals.update({ask.id: deal})
         self.Asks.remove_ask(ask.id) #todo remove
 
@@ -800,7 +852,7 @@ class Deals:
     def get_deals_for_web(self):
         _list = []
         for i in self.__deals.values():
-            _list.append([i.id, i.admin_description(), i.status])
+            _list.append([i.id, i.admin_description(), i.status, i.moderate, i.cancel])
         return _list
 
     def get_count(self):
@@ -844,6 +896,10 @@ class Deal(Deal_ch):
         self.owner_id = 0
         self.trade_id = 0
 
+        self.ask = None
+        self.cancel = 0
+        self.moderate = 0
+
     def reload_cards(self):
         self.vista_people_vst_card = Card(self.vista_people_vst_card)
         self.fiat_people_vst_card = Card(self.fiat_people_vst_card)
@@ -867,6 +923,12 @@ class Deal(Deal_ch):
             self.vista_last_notification = datetime.datetime.now().strftime('%H:%M %d.%m.%Y')
         else:
             self.fiat_last_notification = datetime.datetime.now().strftime('%H:%M %d.%m.%Y')
+
+        if self.cancel:
+            return screens.deal('cancel_accept', self)
+
+        if self.moderate:
+            return screens.deal('moder_accept', self)
 
         if self.status == 'wait_vst':
             if user_id == self.vista_people:
@@ -911,6 +973,10 @@ class Deal(Deal_ch):
                 return screens.deal('6_B', self)
 
     def logic_control(self, key, user):
+        if key == 'moderate' or key == 'cancel':
+            if self.moderate == 0 or self.cancel == 0:
+                return True
+
         if user == 'admin':
             # 2
             if key == 'garant_accept':
@@ -971,6 +1037,9 @@ class Deal(Deal_ch):
             'fiat_send_over': self.fiat_send_over,
             'fiat_last_notification': self.fiat_last_notification,
             'fiat_choose_card': fiat_choose_card,
+            'ask': self.ask,
+            'cancel': self.cancel,
+            'moderate': self.moderate,
         }
 
     def load_from_json(self, config):
@@ -996,9 +1065,44 @@ class Deal(Deal_ch):
         self.fiat_send_over = config['fiat_send_over']
         self.fiat_last_notification = config['fiat_last_notification']
         self.fiat_choose_card = config['fiat_choose_card']
+        self.ask = config['ask']
+        self.cancel = config['cancel']
+        self.moderate = config['moderate']
+
         if self.fiat_choose_card:
             self.fiat_choose_card = Card(self.fiat_choose_card)
         self.reload_cards()
 
     def admin_description(self):
         return f'{self.vista_count} VST {self.vista_currency} ⇒ {self.fiat_count} {self.fiat_currency} {self.rate}'
+
+    def CreateAsk(self, UsersBase):
+        UserOwner = UsersBase.tg_id_identification()
+        ask = Ask()
+        ask.load_from_json(self.ask)
+        ask.rating = UserOwner.rating
+        ask.time_zone = UserOwner.time_zone
+
+        if ask.type == 'vst':
+            ask.have_currency_count -= self.vista_count
+        else:
+            ask.have_currency -= self.fiat_count
+
+        return ask
+
+
+class DealsOldBase:
+    def __init__(self):
+        self.__base = []
+        self.Load()
+
+    def AddDeal(self, Deal):
+        self.__base.append(Deal.to_json())
+
+    def Save(self):
+        with open('base/dealsOld.json', 'w') as file:
+            file.write(json.dumps(self.__base))
+
+    def Load(self):
+        with open('base/dealsOld.json', 'r') as file:
+            self.base = json.loads(file.read())

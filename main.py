@@ -54,6 +54,7 @@ class Data:
 class Config:
     def __init__(self):
         self.Data = Data()
+        self.DealsOldBase = users.DealsOldBase()
         self.Rates = rates.Rates()
         self.Asks = users.Asks(self)
         self.Deals = users.Deals(self)

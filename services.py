@@ -30,7 +30,7 @@ popular_belarus_bank = ['Приорбанк', 'Белагропромбанк', 
 all_banks = popular_russian_bank+popular_belarus_bank+['PayPal']
 card_type = ['VISA', 'MASTER CARD', 'MAESTRO', 'МИР']
 
-http_bot = 't.me/Test_for_phoenix_bot?start='
+http_bot = 't.me/Bank_Vista_bot?start='
 
 signs = {
     'usd': '$',
@@ -38,6 +38,8 @@ signs = {
     'rub': '₽',
     'byn': 'Br'
 }
+
+referral_bonus = 0.1
 
 
 def check_email(mail):

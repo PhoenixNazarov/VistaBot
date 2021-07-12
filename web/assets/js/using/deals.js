@@ -57,6 +57,17 @@ function bind_notification_B(button){
             function onAjaxSuccess(data){location.reload()}
         });
 }
+function bind_continue(button){
+        button.bind('click',
+        function(){
+            $.post(url+"continue_deal",
+            {
+                "id": id
+            },
+            onAjaxSuccess);
+            function onAjaxSuccess(data){location.reload()}
+        });
+}
 
 $(document).ready(function(){
 
@@ -125,10 +136,26 @@ $(document).ready(function(){
                     let id = data[i][0];
                     let desr = data[i][1];
                     let status = data[i][2];
+                    let moderate = data[i][3];
+                    let cancel = data[i][4];
+
+                    if (moderate === 0){
+                        moderate = '<p2 class="bg-success">Нет</p2>';
+                    }
+                    else{
+                        moderate = '<p2 class="bg-danger">Да</p2>';
+                    }
+
+                    if (cancel === 0){
+                        cancel = '<p2 class="bg-success">Нет</p2>';
+                    }
+                    else{
+                        cancel = '<p2 class="bg-danger">Да</p2>';
+                    }
 
                     let a_url = '<a href="deals.html?'+id+'">'+id+'</a>'
 
-                    $("#dataTables-deals").append('<tr class="gradeA odd "><td class="center">' + a_url + '</td><td>' + desr + '</td><td>' + status + '</td></tr>');
+                    $("#dataTables-deals").append('<tr class="gradeA odd "><td class="center">' + a_url + '</td><td>' + desr + '</td><td>' + status + '</td><td>' + moderate + '</td><td>' + cancel + '</td></tr>');
                 }
 
                 $('#dataTables-deals').dataTable();
@@ -228,6 +255,32 @@ $(document).ready(function(){
                 bind_garant_send(b_garant_send, id);
             }
 
+            if (data.cancel !== 0){
+                $('#notification').css({'display': 'inline'});
+                let notif_text = 'Заявка отменена пользователем '
+                if (data.cancel === data.vista_people){
+                    notif_text += 'A';
+                }
+                else{
+                    notif_text += 'B';
+                }
+                $('#notification_text').text(notif_text);
+                $('#continue').css({'display': 'inline'});
+            }
+            if (data.moderate !== 0){
+                $('#notification').css({'display': 'inline'});
+                let notif_text = 'Заявка поставлена на паузу пользователем '
+                if (data.moderate === data.vista_people){
+                    notif_text += 'A';
+                }
+                else{
+                    notif_text += 'B';
+                }
+                $('#notification_text').text(notif_text);
+                $('#continue').css({'display': 'inline'});
+            }
+
+            bind_continue($('#continue'));
             bind_notification_A($('#notificate_A'));
             bind_notification_B($('#notificate_B'));
             bind_remove_deal($('#remove'), id);

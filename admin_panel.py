@@ -2,6 +2,7 @@ import flask
 from flask import Flask, request, Response
 import json
 
+import screens
 import services
 
 
@@ -12,17 +13,19 @@ class Admin_panel:
 
         self.app = Flask(__name__)
 
-        self.auth = []
+        self.auth = ['127.0.0.1']
 
         self.Users = config.Users
         self.Bot = config.Bot
         self.Asks = config.Asks
         self.Data = config.Data
         self.Deals = config.Deals
+        self.DealsOldBase = config.DealsOldBase
 
     def initiate(self):
         self.set()
-        self.app.run()
+        import config
+        self.app.run(host = config.addr)
 
     def set(self):
         @self.app.before_request
@@ -157,9 +160,12 @@ class Admin_panel:
             acp = Deal.to_json()
             acp['a_vst_card'] = Deal.vista_people_vst_card.collect_full('web')
             acp['b_vst_card'] = Deal.fiat_people_vst_card.collect_full('web')
-            acp['g_vst_card'] = Deal.garant_card().replace('\n','<br>')
+            acp['g_vst_card'] = Deal.garant_card().replace('\n', '<br>')
             acp['a_trade_id'] = self.Users.tg_id_identification(Deal.vista_people).trade_id
             acp['b_trade_id'] = self.Users.tg_id_identification(Deal.fiat_people).trade_id
+
+
+
             return Response(json.dumps(acp))
 
         @self.app.route("/remove_deal", methods = ['POST'])
@@ -186,7 +192,23 @@ class Admin_panel:
 
             self.Bot.notification_deal_users(Deal)
 
-            self.Deals.remove_deal(Deal.id) #todo remove deal
+            user_A = self.Users.tg_id_identification(Deal.vista_people)
+            user_B = self.Users.tg_id_identification(Deal.fiat_people)
+            user_A.rating += 1
+            user_B.rating += 1
+
+            # todo referral bonus
+            for ref_user in [user_A, user_B]:
+                commission, user, commissionCurrency = self.Users.referralBonus(ref_user)
+                if commission:
+                    self.Bot.send_screen(user, screens.referral('bonus', user, commission, commissionCurrency))
+
+            ask = Deal.CreateAsk()
+            self.Asks.add_ask(ask)
+
+            self.Deals.remove_deal(Deal.id)
+
+            self.DealsOldBase.AddDeal(Deal)  # todo last deal data
 
             return Response(json.dumps('ok'))
 
@@ -205,6 +227,16 @@ class Admin_panel:
                 screen_B = Deal.logic_message(user_B)
                 if screen_B:
                     self.Bot.send_screen(user_B, screen_B)
+
+            return Response(json.dumps('ok'))
+
+        @self.app.route("/continue_deal", methods = ['POST'])
+        def continue_deal():
+            id = request.form['id']
+            Deal = self.Deals.get_deal(id)
+            Deal.cancel = 0
+            Deal.moderate = 0
+            self.Bot.notification_deal_users(Deal)
 
             return Response(json.dumps('ok'))
 

@@ -9,9 +9,8 @@ import services
 
 class Bot:
     def __init__(self, config):
-        # self.token = '1229678012:AAELEl3SUr3arUWH5sQD2jP6njscOxGZS_c'
-        self.token = '1002352718:AAGPhDTnKyeF6dB7Zdsm5Yceu_1BKk_b9Do'
-
+        import config as conf
+        self.token = conf.token
         self.bot = telebot.TeleBot(self.token)
         self.Users = config.Users
         self.Rates = config.Rates
@@ -25,17 +24,17 @@ class Bot:
 
         @self.bot.message_handler(content_types = ['text'])
         def message_oper(message):
-            try:
+            # try:
                 self.__message(message)
-            except:
-                pass
+            # except:
+            #     pass
 
         @self.bot.callback_query_handler(func = lambda call: True)
         def query_oper(call):
-            try:
+            # try:
                 self.__query(call)
-            except:
-                pass
+            # except:
+            #     pass
 
         self.bot.polling(none_stop = True, interval = 0)
 
@@ -64,6 +63,9 @@ class Bot:
             user.position = 'first_welcome'
             self.send_screen(user, screens.edit_mail('main'))
         else:
+            s = message.text.split(' ')
+            if len(s) == 2:
+                self.Users.go_referal(user, s[1])
             user.position = 'main'
             self.send_screen(user, screens.main_screen('main'))
 
@@ -370,20 +372,24 @@ class Bot:
             if call.data.endswith('fcurrency'):
                 currency = call.data.split('_')[1]
                 # test card
-                # cards = user.get_card_currency(currency)
-                # if len(cards) == 0:
-                #     self.edit_screen(user, screens.create_asks('havent_cards', user), call.message.id)
-                # else:
-                user.pop_data.update({'fcurrency': currency})
-                user.position = 'create_ask_count'
-                self.edit_screen(user, screens.create_asks('count', user), call.message.id)
+                cards = user.get_card_currency(currency)
+                if len(cards) == 0:
+                    self.edit_screen(user, screens.create_asks('havent_cards', user), call.message.id)
+                else:
+                    user.pop_data.update({'fcurrency': currency})
+                    user.position = 'create_ask_count'
+                    self.edit_screen(user, screens.create_asks('count', user), call.message.id)
 
             # choose second currency
             elif call.data.endswith('scurrency'):
                 currency = call.data.split('_')[1]
-                user.pop_data.update({'scurrency': currency})
-                self.edit_screen(user, screens.create_asks('rate', user, self.Rates), call.message.id)
-                user.position = 'create_ask_rate'
+                cards = user.get_card_currency(currency)
+                if len(cards) == 0:
+                    self.edit_screen(user, screens.create_asks('havent_cards', user), call.message.id)
+                else:
+                    user.pop_data.update({'scurrency': currency})
+                    self.edit_screen(user, screens.create_asks('rate', user, self.Rates), call.message.id)
+                    user.position = 'create_ask_rate'
 
             # choose rate cbrf
             elif call.data.endswith('rate'):
@@ -471,6 +477,12 @@ class Bot:
         elif call.data.startswith('d_ask'):
             if call.data.endswith('fcurrency'):
                 cur = call.data.split('_')[2]
+
+                cards = user.get_card_currency(cur)
+                if len(cards) == 0:
+                    self.edit_screen(user, screens.create_asks('havent_cards', user), call.message.id)
+                    return
+
                 user.pop_data.update({'d_currency': cur})
                 if cur in ['veur', 'vusd']:
                     user.pop_data.update({'d_type': 'fiat'})
@@ -481,6 +493,12 @@ class Bot:
 
             elif call.data.endswith('scurrency'):
                 cur = call.data.split('_')[2]
+
+                cards = user.get_card_currency(cur)
+                if len(cards) == 0:
+                    self.edit_screen(user, screens.create_asks('havent_cards', user), call.message.id)
+                    return
+
                 user.pop_data.update({'d_scurrency': cur})
                 vst_cur, fiat_cur = services.find_vst_fiat(user.pop_data['d_currency'], cur)
                 user.pop_data.update({
@@ -532,6 +550,14 @@ class Bot:
                     else:
                         user.pop_data['d_banks'][ind] = 0
                     self.edit_screen(user, screens.show_asks('get_fiat_banks', user, self.Asks), call.message.id)
+
+            elif call.data.endswith('next'):
+                user.pop_data['filter']['index'] += 1
+                self.show_ask_filter(user, call.message.id)
+
+            elif call.data.endswith('prev'):
+                user.pop_data['filter']['index'] -= 1
+                self.show_ask_filter(user, call.message.id)
 
             elif call.data.endswith('deal'):
                 num = call.data.split('_')[2]
@@ -609,6 +635,32 @@ class Bot:
                 minutes = int(call.data.split('_')[2])
                 deal.fiat_send_over = int(time.time() + minutes * 60)
                 self.edit_screen(user_B, deal.logic_message(user_B), call.message.id)
+
+            elif call.data.endswith('cancel'):
+                self.edit_screen(user, screens.deal('cancel', deal), call.message.id)
+            elif call.data.endswith('cancel_accept'):
+                user.rating -= 1
+                if deal.logic_control('cancel', user):
+                    deal.cancel = user.tg_id
+                    self.edit_screen(user, deal.logic_message(user), call.message.id)
+                    if user_A.tg_id == user.tg_id:
+                        self.send_screen(user_B, deal.logic_message(user_B))
+                    else:
+                        self.send_screen(user_A, deal.logic_message(user_A))
+
+            elif call.data.endswith('moder'):
+                self.edit_screen(user, screens.deal('moder', deal), call.message.id)
+            elif call.data.endswith('moder_accept'):
+                if deal.logic_control('moderate', user):
+                    deal.moderate = user.tg_id
+                    self.edit_screen(user, deal.logic_message(user), call.message.id)
+                    if user_A.tg_id == user.tg_id:
+                        self.send_screen(user_B, deal.logic_message(user_B))
+                    else:
+                        self.send_screen(user_A, deal.logic_message(user_A))
+
+            elif call.data.endswith('none'):
+                self.edit_screen(user, deal.logic_message(user), call.message.id)
 
         elif call.data == 'delete':
             self.delete_message(user, call.message.id)
@@ -691,7 +743,11 @@ class Bot:
                 self.edit_screen(user, screens.create_asks('get_send', user, self.Rates), edit)
 
     def show_ask_filter(self, user, message_id):
-        asks = self.Asks.asks_filter(user)
+        if 'filter' in user.pop_data:
+            filter = user.pop_data['filter']
+        else:
+            filter = user.CreateFilter()
+        asks = self.Asks.asks_filter(filter)
         if len(asks) == 0:
             self.edit_screen(user, screens.show_asks('asks_not_found', user, self.Asks), message_id)
         else:

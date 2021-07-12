@@ -8,17 +8,17 @@ jQuery(document).ready(function(){
                     pas=$("#password").val();
                     jQuery.post(url+"auth",
                     {   
-                        url:'auth',
-                        name:nm,
-                        password:pas
+                        'url':'auth',
+                        'name':nm,
+                        'password':pas
                     },
-                    onAjaxSuccess1);
+                    onAjaxSuccess);
+                function onAjaxSuccess(data){
 
-                function onAjaxSuccess1(data){
                     if (data === 'ok'){
                         $(location).attr('href','index.html');}
                     }
-                    data=JSON.parse(data);
+                    data = JSON.parse(data);
 
                     kode=data.kod;
                     if (kode===1){
