@@ -21,6 +21,7 @@ class Admin_panel:
         self.Data = config.Data
         self.Deals = config.Deals
         self.DealsOldBase = config.DealsOldBase
+        self.ReferralWithdrawal = config.ReferralWithdrawal
 
     def initiate(self):
         self.set()
@@ -199,16 +200,17 @@ class Admin_panel:
 
             # todo referral bonus
             for ref_user in [user_A, user_B]:
-                commission, user, commissionCurrency = self.Users.referralBonus(ref_user)
+                commission, user, commissionCurrency = self.Users.referralBonus(ref_user, Deal)
                 if commission:
                     self.Bot.send_screen(user, screens.referral('bonus', user, commission, commissionCurrency))
 
-            ask = Deal.CreateAsk()
-            self.Asks.add_ask(ask)
+            ask = Deal.CreateAsk(self.Users)
+            if ask:
+                self.Asks.add_ask(ask)
 
             self.Deals.remove_deal(Deal.id)
 
-            self.DealsOldBase.AddDeal(Deal)  # todo last deal data
+            self.DealsOldBase.AddDeal(Deal, self.Users)  # todo last deal data
 
             return Response(json.dumps('ok'))
 
@@ -254,6 +256,23 @@ class Admin_panel:
             self.Data.card_eur = request.form['card_eur']
 
             return Response(json.dumps({'ok': 1}))
+
+        # REFERRAL WITHDRAWAL
+        @self.app.route("/get_withdrawals", methods = ['POST'])
+        def get_withdrawals():
+            return Response(self.ReferralWithdrawal.get_web())
+
+        @self.app.route("/allow_withdrawal", methods = ['POST'])
+        def allow_withdrawal():
+            id = int(request.form['id'])
+            self.ReferralWithdrawal.remove(id)
+            return Response(self.ReferralWithdrawal.get_web())
+
+        # OLD DEALS
+        @self.app.route("/get_old_deals", methods = ['POST'])
+        def get_old_deals():
+            id = int(request.form['id'])
+            return Response(self.DealsOldBase.getWeb(id))
 
         @self.app.after_request
         def after_request(response):

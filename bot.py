@@ -16,6 +16,7 @@ class Bot:
         self.Rates = config.Rates
         self.Asks = config.Asks
         self.Deals = config.Deals
+        self.ReferralWithdrawal = config.ReferralWithdrawal
 
     def initiate(self):
         @self.bot.message_handler(commands = ['start'])
@@ -24,17 +25,17 @@ class Bot:
 
         @self.bot.message_handler(content_types = ['text'])
         def message_oper(message):
-            # try:
+            try:
                 self.__message(message)
-            # except:
-            #     pass
+            except:
+                pass
 
         @self.bot.callback_query_handler(func = lambda call: True)
         def query_oper(call):
-            # try:
+            try:
                 self.__query(call)
-            # except:
-            #     pass
+            except:
+                pass
 
         self.bot.polling(none_stop = True, interval = 0)
 
@@ -281,6 +282,33 @@ class Bot:
             elif call.data.endswith('referal'):
                 self.edit_screen(user, screens.user_info('referal', user), call.message.id)
             elif call.data.endswith('ref_list'):
+                self.edit_screen(user, screens.user_info('referal_list', user, self.Users), call.message.id)
+            elif call.data.endswith('ref_getu'):
+                if user.vusd > services.referral_withdrawal_usd:
+                    self.edit_screen(user, screens.user_info('card_vusd', user, self.Users), call.message.id)
+                else:
+                    self.send_screen(user, screens.user_info('low_money', user, self.Users))
+            elif call.data.endswith('ref_gete'):
+                if user.veur > services.referral_withdrawal_eur:
+                    self.edit_screen(user, screens.user_info('card_veur', user, self.Users), call.message.id)
+                else:
+                    self.send_screen(user, screens.user_info('low_money', user, self.Users))
+            elif call.data.endswith('cardsu'):
+                if user.vusd > services.referral_withdrawal_usd:
+                    num = int(call.data.split('_')[1])
+                    self.ReferralWithdrawal.add(user, user.get_card_currency('vusd')[num], 'vusd')
+                    self.edit_screen(user, screens.user_info('card_choose', user, self.Users), call.message.id)
+                else:
+                    self.send_screen(user, screens.user_info('low_money', user, self.Users))
+            elif call.data.endswith('cardse'):
+                if user.veur > services.referral_withdrawal_eur:
+                    num = int(call.data.split('_')[1])
+                    self.ReferralWithdrawal.add(user, user.get_card_currency('veur')[num], 'veur')
+                    self.edit_screen(user, screens.user_info('card_choose', user, self.Users), call.message.id)
+                else:
+                    self.send_screen(user, screens.user_info('low_money', user, self.Users))
+
+            elif call.data.endswith('ref_gete'):
                 self.edit_screen(user, screens.user_info('referal_list', user, self.Users), call.message.id)
 
         elif call.data.startswith('user_edit'):

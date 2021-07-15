@@ -54,6 +54,7 @@ class Data:
 class Config:
     def __init__(self):
         self.Data = Data()
+        self.ReferralWithdrawal = users.ReferralWithdrawal()
         self.DealsOldBase = users.DealsOldBase()
         self.Rates = rates.Rates()
         self.Asks = users.Asks(self)
@@ -88,6 +89,9 @@ class Config:
             self.Asks.save()
             self.Data.save()
             self.Deals.save()
+            self.ReferralWithdrawal.save()
+            self.DealsOldBase.save()
+
             time.sleep(1)
 
 

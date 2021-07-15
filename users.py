@@ -52,6 +52,8 @@ class Users:
             return False
         if not ref_id.isdigit():
             return False
+        if main_user.trade_id == ref_id:
+            return False
 
         ref_user = None
         for i in self.__Users.values():
@@ -97,7 +99,7 @@ class Users:
     def get_user(self, trade_id):
         user = None
         for i in self.__Users.values():
-            if str(i.trade_id) == trade_id:
+            if str(i.trade_id) == str(trade_id):
                 return i
 
         if user is None:
@@ -153,7 +155,7 @@ class User:
         self.referal_list = []
         self.referal_to = False
 
-        self.vuer = 0
+        self.veur = 0
         self.vusd = 0
 
     def load_from_json(self, _json):
@@ -177,7 +179,7 @@ class User:
         self.referal_list = _json['referal_list']
         self.referal_to = _json['referal_to']
         self.last_active = _json['last_active']
-        self.vuer = _json['vuer']
+        self.veur = _json['veur']
         self.vusd = _json['vusd']
 
         for i in _json['cards']:
@@ -202,7 +204,7 @@ class User:
             'referal_list': self.referal_list,
             'referal_to': self.referal_to,
             'last_active': self.last_active,
-            'vuer': self.vuer,
+            'veur': self.veur,
             'vusd': self.vusd
         }
 
@@ -1077,7 +1079,7 @@ class Deal(Deal_ch):
         return f'{self.vista_count} VST {self.vista_currency} ⇒ {self.fiat_count} {self.fiat_currency} {self.rate}'
 
     def CreateAsk(self, UsersBase):
-        UserOwner = UsersBase.tg_id_identification()
+        UserOwner = UsersBase.get_user(self.owner_id)
         ask = Ask()
         ask.load_from_json(self.ask)
         ask.rating = UserOwner.rating
@@ -1086,23 +1088,96 @@ class Deal(Deal_ch):
         if ask.type == 'vst':
             ask.have_currency_count -= self.vista_count
         else:
-            ask.have_currency -= self.fiat_count
+            ask.have_currency_count -= self.fiat_count
 
-        return ask
+        if ask.have_currency_count > 1:
+            return ask
+        else:
+            return None
 
 
 class DealsOldBase:
     def __init__(self):
         self.__base = []
-        self.Load()
+        self.load()
 
-    def AddDeal(self, Deal):
-        self.__base.append(Deal.to_json())
+    def AddDeal(self, Deal, UserBase):
+        userA = UserBase.tg_id_identification(Deal.vista_people).trade_id
+        userB = UserBase.tg_id_identification(Deal.fiat_people).trade_id
+        self.__base.append({
+            'id_A': userA,
+            'id_B': userB,
+            'text': Deal.button_text(),
+            'cancel': Deal.cancel,
+            'moderate': Deal.moderate,
+            'date': datetime.datetime.now().strftime('%H:%M %d.%m.%Y')
+        })
 
-    def Save(self):
+    def save(self):
         with open('base/dealsOld.json', 'w') as file:
             file.write(json.dumps(self.__base))
 
-    def Load(self):
+    def load(self):
         with open('base/dealsOld.json', 'r') as file:
-            self.base = json.loads(file.read())
+            self.__base = json.loads(file.read())
+
+    def getWeb(self, id):
+        if id == -1:
+            base = [list(i.values()) for i in self.__base]
+        else:
+            base = []
+            for i in self.__base:
+                if i['id_A'] == id or i['id_B'] == id:
+                    base.append(list(i.values()))
+
+        return json.dumps(base)
+
+
+class ReferralWithdrawal:
+    def __init__(self):
+        self.__base = []
+        self.load()
+        self.id = 0
+
+    def add(self, user, card, currency):
+        if currency == 'vusd':
+            count = user.vusd
+            user.vusd = 0
+        else:
+            count = user.veur
+            user.veur = 0
+
+        self.__base.append({
+            'id': self.id,
+            'currency': currency,
+            'userId': user.trade_id,
+            'card': card.collect_full('web'),
+            'count': count
+        })
+        self.id += 1
+
+    def remove(self, id):
+        new_base = []
+        for i in self.__base:
+            if i['id'] != id:
+                new_base.append(i)
+        self.__base = new_base
+
+    def get_web(self):
+        ans = []
+        for i in self.__base:
+            ans.append(list(i.values()))
+        return json.dumps(ans)
+
+    def save(self):
+        with open('base/ReferralWithdrawal.json', 'w') as file:
+            file.write(json.dumps({
+                'id': self.id,
+                'base': self.__base
+            }))
+
+    def load(self):
+        with open('base/ReferralWithdrawal.json', 'r') as file:
+            base = json.loads(file.read())
+            self.__base = base['base']
+            self.id = base['id']

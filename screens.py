@@ -81,6 +81,7 @@ def user_info(key, user, UserBase=None):
            f'\nНомер телефона: {user.phone}' \
            f'\nE-Mail: {user.mail}' \
            f'\nЧасовой пояс: {user.time_zone}'
+    buttons = None
 
     if key == 'main':
         buttons = telebot.types.InlineKeyboardMarkup()
@@ -102,12 +103,55 @@ def user_info(key, user, UserBase=None):
         buttons.row(button)
 
     elif key == 'referal':
-        text = f'Ваша реферальная ссылка: {services.http_bot + str(user.trade_id)}'
+        text = f'Ваша реферальная ссылка: {services.http_bot + str(user.trade_id)}' \
+               f'\nVista Usd: {user.vusd}' \
+               f'\nVista Eur: {user.veur}'
         buttons = telebot.types.InlineKeyboardMarkup()
+        button1 = telebot.types.InlineKeyboardButton(text = 'Вывести Vista Usd', callback_data = 'userdata_ref_getu')
+        button2 = telebot.types.InlineKeyboardButton(text = 'Вывести Vista Eur', callback_data = 'userdata_ref_gete')
+        buttons.row(button1, button2)
         button = telebot.types.InlineKeyboardButton(text = 'Список рефералов', callback_data = 'userdata_ref_list')
         buttons.row(button)
         button = telebot.types.InlineKeyboardButton(text = '⬅️ Назад', callback_data = 'userdata_main')
         buttons.row(button)
+
+    elif key == 'card_vusd':
+        if len(user.get_card_currency('vusd')) == 0:
+            text = 'Создайте карту в разделе карты для вывода'
+        else:
+            text = 'Выберите подходящую карту для вывода Vista Usd'
+
+            buttons = telebot.types.InlineKeyboardMarkup()
+            num = 0
+            for i in user.get_card_currency('vusd'):
+                button1 = telebot.types.InlineKeyboardButton(text = i.name, callback_data = f'userdata_{num}_cardsu')
+                buttons.row(button1)
+                num += 1
+            button = telebot.types.InlineKeyboardButton(text = '⬅️ Назад', callback_data = 'userdata_main')
+            buttons.row(button)
+
+    elif key == 'card_veur':
+        if len(user.get_card_currency('veur')) == 0:
+            text = 'Создайте карту в разделе карты для вывода'
+        else:
+            text = 'Выберите подходящую карту для вывода Vista Eur'
+
+            buttons = telebot.types.InlineKeyboardMarkup()
+            num = 0
+            for i in user.get_card_currency('veur'):
+                button1 = telebot.types.InlineKeyboardButton(text = i.name, callback_data = f'userdata_{num}_cardse')
+                buttons.row(button1)
+                num += 1
+            button = telebot.types.InlineKeyboardButton(text = '⬅️ Назад', callback_data = 'userdata_main')
+            buttons.row(button)
+
+    elif key == 'card_choose':
+        text = 'Ваша заявка добавлена в очередь на вывод'
+
+    elif key == 'low_money':
+        text = f'Минимальная сумма для вывода:' \
+               f'\n Vista Usd: {services.referral_withdrawal_usd}' \
+               f'\n Vista Eur: {services.referral_withdrawal_eur}'
 
     elif key == 'referal_list':
         if len(user.referal_list) == 0:
