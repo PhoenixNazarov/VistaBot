@@ -199,9 +199,14 @@ class Admin_panel:
             user_B.rating += 1
 
             # todo referral bonus
+            referral_cmmission = 0
+            print(Deal.vista_count, Deal.vista_count_without_com)
+            profit = Deal.vista_count - Deal.vista_count_without_com
             for ref_user in [user_A, user_B]:
                 commission, user, commissionCurrency = self.Users.referralBonus(ref_user, Deal)
                 if commission:
+                    profit -= commission
+                    referral_cmmission += commission
                     self.Bot.send_screen(user, screens.referral('bonus', user, commission, commissionCurrency))
 
             ask = Deal.CreateAsk(self.Users)
@@ -210,7 +215,7 @@ class Admin_panel:
 
             self.Deals.remove_deal(Deal.id)
 
-            self.DealsOldBase.AddDeal(Deal, self.Users)  # todo last deal data
+            self.DealsOldBase.AddDeal(Deal, self.Users, referral_cmmission, profit)  # todo last deal data
 
             return Response(json.dumps('ok'))
 

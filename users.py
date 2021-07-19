@@ -40,7 +40,9 @@ class Users:
         return self.__Users[message.chat.id]
 
     def tg_id_identification(self, id):
-        return self.__Users[id]
+        if id in self.__Users:
+            return self.__Users[id]
+        return False
 
     def trade_id_identification(self, id):
         for i in self.__Users:
@@ -113,6 +115,8 @@ class Users:
             referralUser = self.__Users[user.referal_to]
 
             commission = (deal.vista_count - deal.vista_count_without_com) * services.referral_bonus
+
+            commission = round(commission, 2)
 
             if deal.vista_currency == 'vusd':  # todo check
                 referralUser.vusd += commission
@@ -417,6 +421,7 @@ class Card:
                    f'{self.config[3]}'
 
         else:
+            print('name', self.name)
             text = f'{self.name}, BYN\n' \
                    f'{self.config[3]}, {self.config[4]}\n' \
                    f'{self.config[5], self.config[6]}'
@@ -500,6 +505,14 @@ class Asks:
             }))
 
     def asks_filter(self, filter):
+        # SHOW BOT, all asks
+        if filter['have_cur'] == 'all':
+            asks = []
+            for i in self.__asks.values():
+                if i.can_show():
+                    asks.append(i)
+            return asks
+
         have_cur = filter['have_cur']
         get_cur = filter['get_cur']
         type = filter['type']
@@ -510,7 +523,7 @@ class Asks:
 
         for i in self.__asks.values():
             if not i.can_show(): continue
-            if i.trade_id_owner == tg_id: continue
+            if i.trade_id_owner == tg_id and tg_id != 'show': continue
 
             if i.type == type:
                 if i.type == 'vst':
@@ -630,16 +643,10 @@ class Ask(Ask_ch):
         return round(self.have_currency_count * self.rate, 2)
 
     def have_count_w_com(self):
-        if self.type == 'vst':
-            return round(self.have_currency_count + self.have_currency_count * (self.Data.perc_vst / 100), 2)
-        else:
-            return round(self.have_currency_count + self.have_currency_count * (self.Data.perc_fiat / 100), 2)
+        return round(self.have_currency_count + self.have_count_com(), 2)
 
     def get_count_w_com(self):
-        if self.type == 'fiat':
-            return round(self.get_count() + self.get_count() * (self.Data.perc_vst / 100), 2)
-        else:
-            return round(self.get_count() + self.get_count() * (self.Data.perc_fiat / 100), 2)
+        return round(self.get_count() + self.get_count_com(), 2)
 
     def have_count_com(self):
         if self.type == 'vst':
@@ -770,7 +777,7 @@ class Deals:
                     banks.append(i)
 
             deal.fiat_people = user.tg_id
-            deal.fiat_people_vst_card = user.pop_data.pop('d_vst')
+            deal.fiat_people_vst_card = user.pop_data.pop('d_vst_card')
             deal.fiat_people_banks = banks
 
             deal.vista_people = Users.trade_id_identification(ask.trade_id_owner).tg_id
@@ -794,8 +801,9 @@ class Deals:
                         1/0
 
             deal.vista_people = user.tg_id
-            deal.vista_people_vst_card = user.pop_data.pop('d_vst')
+            deal.vista_people_vst_card = user.pop_data.pop('d_vst_card')
             deal.vista_people_fiat_card = cards
+            print(cards)
 
             deal.fiat_people = Users.trade_id_identification(ask.trade_id_owner).tg_id
             deal.fiat_people_vst_card = ask.vst_card.config
@@ -803,7 +811,7 @@ class Deals:
             deal.vista_currency = 'VST ' + services.signs[ask.get_currency]
             deal.fiat_currency = services.signs[ask.have_currency]
             deal.vista_count = ask.get_count_w_com()
-            deal.vista_count_without_com = ask.have_currency_count
+            deal.vista_count_without_com = ask.get_count()
             deal.fiat_count = ask.have_count_w_com()
 
         deal.reload_cards()
@@ -1101,16 +1109,17 @@ class DealsOldBase:
         self.__base = []
         self.load()
 
-    def AddDeal(self, Deal, UserBase):
+    def AddDeal(self, Deal, UserBase, referral, profit):
         userA = UserBase.tg_id_identification(Deal.vista_people).trade_id
         userB = UserBase.tg_id_identification(Deal.fiat_people).trade_id
         self.__base.append({
             'id_A': userA,
             'id_B': userB,
             'text': Deal.button_text(),
-            'cancel': Deal.cancel,
-            'moderate': Deal.moderate,
-            'date': datetime.datetime.now().strftime('%H:%M %d.%m.%Y')
+            'referral': referral,
+            'profit': profit,
+            'date': datetime.datetime.now().strftime('%H:%M %d.%m.%Y'),
+            'vst_count': Deal.vista_count
         })
 
     def save(self):

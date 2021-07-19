@@ -549,7 +549,10 @@ class Bot:
             elif call.data.endswith('cards'):
                 pos = call.data.split('_')[2]
                 if pos == 'next':
-                    self.show_ask_filter(user, call.message.id)
+                    if user.pop_data['d_card_after']:
+                        self.edit_screen(user, screens.show_asks('vst_send', user, self.Asks), call.message.id)
+                    else:
+                        self.show_ask_filter(user, call.message.id)
                 else:
                     ind = list(user.pop_data['d_cards_name'].keys())[int(pos)]
                     if user.pop_data['d_cards_name'][ind] == 1:
@@ -598,14 +601,34 @@ class Bot:
             elif call.data.endswith('dealAccept'):
                 num = call.data.split('_')[2]
                 user.pop_data.update({'d_ask_id': num})
-                self.edit_screen(user, screens.show_asks('vst_send', user, self.Asks), call.message.id)
+                ask = self.Asks.get_ask_from_id(num)
+                if 'd_type' not in user.pop_data or 'd_vst' not in user.pop_data:
+                    user.pop_data['d_type'] = ask.type
+                    if user.pop_data['d_type'] == 'fiat':
+                        user.pop_data.update({
+                            'd_vst': ask.get_currency,
+                            'd_fiat': ask.have_currency
+                        })
+                        user.pop_data['d_card_after'] = 1
+                        cards = user.get_card_currency(user.pop_data['d_fiat'])
+                        cards_name = {i.name: 0 for i in cards}
+                        user.pop_data.update({'d_cards_name': cards_name})
+                        self.edit_screen(user, screens.show_asks('get_fiat_card', user, self.Asks), call.message.id)
+                    else:
+                        user.pop_data.update({
+                            'd_vst': ask.have_currency,
+                            'd_fiat': ask.get_currency,
+                            'd_banks': {'everyone': 1}
+                        })
+                        self.edit_screen(user, screens.show_asks('vst_send', user, self.Asks), call.message.id)
+                else:
+                    self.edit_screen(user, screens.show_asks('vst_send', user, self.Asks), call.message.id)
 
             elif call.data.endswith('vscard'):
-                print('lets_go1')
                 num = call.data.split('_')[2]
                 vst_cards = user.get_card_currency('v' + user.pop_data['d_vst'])
                 card = vst_cards[int(num)]
-                user.pop_data.update({'d_vst': card.config})
+                user.pop_data.update({'d_vst_card': card.config})
                 deal = self.Deals.make_deal(user, self.Users)
                 self.delete_message(user, call.message.id)
                 self.notification_deal_users(deal)

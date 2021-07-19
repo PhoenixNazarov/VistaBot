@@ -1,4 +1,5 @@
 import bot
+import bot_show
 import users
 import admin_panel
 import rates
@@ -63,6 +64,8 @@ class Config:
         self.Bot = bot.Bot(self)
         self.Admin_panel = admin_panel.Admin_panel(self)
 
+        self.BotShow = bot_show.BotShow(self)
+
         users.Ask_ch.Rates = self.Rates
         users.Ask_ch.Data = self.Data
         users.Deal_ch.Data = self.Data
@@ -82,6 +85,11 @@ class Config:
 
         threading.Thread(target = self.Admin_panel.initiate).start()
         print('Admin_panel has started')
+        time.sleep(1)
+
+        threading.Thread(target = self.BotShow.initiate).start()
+        print('Bot_show has started')
+
 
     def saving_base(self):
         while 1:

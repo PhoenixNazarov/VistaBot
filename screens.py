@@ -657,6 +657,13 @@ def show_asks(key, user, Asks, Asks_list=None):
             buttons.row(button1)
             num += 1
 
+    # SHOW BOT
+    elif key == 'not_reg':
+        text = 'Зарегистрируйтесь в боте @Bank_Vista_bot для проведения сделок'
+
+    elif key == 'original_send':
+        text = 'Для продолжения сделки перейдите в бот @Bank_Vista_bot'
+
     return text, buttons
 
 
@@ -800,5 +807,15 @@ def referral(key, user=None, commission=None, commissionCurrency=None):
     buttons = None
     if key == 'bonus':
         text = f'На ваш счет начислено {commission} {commissionCurrency}'
+
+    return text, buttons
+
+
+def main_screen_show(key):
+    buttons = None
+    if key == 'main':
+        text = 'Главное меню:'
+        buttons = telebot.types.ReplyKeyboardMarkup(resize_keyboard = True)
+        buttons.row('💵 Фильтр заявок', '💵 Все заявки')
 
     return text, buttons
