@@ -3,6 +3,20 @@ import datetime
 import services
 import screens
 
+import sqlite3 as sq
+
+
+class Sql:
+    def __init__(self):
+        self.path = 'base/database.db'
+
+    def SQL(self, sql):
+        with sq.connect(self.path) as con:
+            cur = con.cursor()
+            cur.execute(sql)
+            con.commit()
+            return cur.fetchall()
+
 
 class Users:
     def __init__(self):
@@ -232,6 +246,7 @@ class User:
 
     def clear(self):
         self.pop_data = {}
+        self.unsave_pop_data = {}
         self.position = ''
 
     # cards
@@ -255,6 +270,8 @@ class User:
             info_card.append(self.pop_data.pop('card_type'))
             info_card.append(self.pop_data.pop('fio'))
             info_card.append(self.pop_data.pop('date_end'))
+            print(self.pop_data)
+            info_card.append(self.pop_data.pop('card_number'))
 
         else:
             type = self.pop_data.pop('type')
@@ -324,6 +341,9 @@ class User:
 
         ask.show_rate = round(self.pop_data.pop('rate'), 2)
         ask.rate = Rates.get_count_rate(ask.have_currency, ask.get_currency, ask.show_rate)
+
+        if self.pop_data['incomplete']:
+            ask.min_incomplete = self.pop_data['count_incomplete']
 
         ask.have_currency_count = self.pop_data.pop('count')
         ask.vst_card = Card(self.pop_data.pop('vstcard'))
@@ -421,10 +441,10 @@ class Card:
                    f'{self.config[3]}'
 
         else:
-            print('name', self.name)
             text = f'{self.name}, BYN\n' \
                    f'{self.config[3]}, {self.config[4]}\n' \
-                   f'{self.config[5], self.config[6]}'
+                   f'{self.config[7]}\n' \
+                   f'{self.config[5]}, {self.config[6]}'
 
         if show == 'tg':
             return text
@@ -445,23 +465,24 @@ class Card:
         elif self.create_type == 'c':
             text = f'Карта, {self.config[2]}\n' \
                    f'{self.config[3]}, {self.config[4]}\n' \
-                   f'{self.config[5]}, {self.config[6]}'
+                   f'<code>{self.config[5]}</code>, {self.config[6]}'
 
         elif self.create_type == 'a':
             text = f'Счёт, {self.config[2]}\n' \
                    f'{self.config[3]}\n' \
                    f'Бик: {self.config[4]}\n' \
-                   f'Номер счёта: {self.config[5]}\n' \
+                   f'Номер счёта: <code>{self.config[5]}</code>\n' \
                    f'{self.config[6]}'
 
         elif self.create_type == 'p':
             text = f'PayPal, {self.config[2]}\n' \
-                   f'{self.config[3]}'
+                   f'<code>{self.config[3]}</code>'
 
         else:
             text = f'BYN\n' \
                    f'{self.config[3]}, {self.config[4]}\n' \
-                   f'{self.config[5], self.config[6]}'
+                   f'<code>{self.config[7]}</code>\n' \
+                   f'{self.config[5]}, {self.config[6]}\n'
         return text
 
 
@@ -603,6 +624,9 @@ class Ask(Ask_ch):
         self.fiat_cards = []
         self.fiat_banks = []
 
+        # incomplete
+        self.min_incomplete = 0
+
     def to_json(self):
         return {
             'id': self.id,
@@ -619,6 +643,7 @@ class Ask(Ask_ch):
             'fiat_banks': self.fiat_banks,
             'time_zone': self.time_zone,
             'rating': self.rating,
+            'min_incomplete' : self.min_incomplete,
         }
 
     def load_from_json(self, config):
@@ -635,6 +660,7 @@ class Ask(Ask_ch):
         self.fiat_banks = config['fiat_banks']
         self.time_zone = config['time_zone']
         self.rating = config['rating']
+        self.min_incomplete = config['min_incomplete']
 
         for i in config['fiat_cards']:
             self.fiat_cards.append(Card(i))
@@ -666,33 +692,46 @@ class Ask(Ask_ch):
         else:
             return 0
 
+    def incomplete_preview(self):
+        if self.min_incomplete:
+            if self.type == 'vst':
+                return f'\n\nЧастичный выкуп, минимальная сумма {self.min_incomplete} VST {self.have_currency}'
+            else:
+                return f'\n\nЧастичный выкуп, минимальная сумма {self.min_incomplete} {self.have_currency}'
+        else:
+            return ''
+
     def preview(self):
         sign_have_currency = services.signs[self.have_currency]
         sign_get_currency = services.signs[self.get_currency]
         if self.type == 'vst':
             cards_banks = set([i.bank.lower() for i in self.fiat_cards])
-            cards_banks = '\n'.join(cards_banks)
+            cards_banks = '\n-'.join(cards_banks)
 
-            text = f'Отдаете: {self.have_count_w_com()} VST {sign_have_currency}\n' \
-                   f'Получаете: {self.get_count_w_com()} {sign_get_currency}\n' \
-                   f'Курс: {self.show_rate}\n' \
+            text = f'Информация о заявке <b>№{self.id}:</b>\n\n' \
+                   f'Отдаете: <b>{self.have_count_w_com()} VST {sign_have_currency}</b>\n' \
+                   f'Получаете: <b>{self.get_count_w_com()} {sign_get_currency}</b>\n' \
+                   f'Курс обмена: {self.show_rate}\n' \
                    f'Рейтинг создателя заявки: {self.rating}\n' \
                    f'Возможные способы получить {self.get_currency}:\n' \
                    f'{cards_banks}\n' \
-                   f'Часовой пояс: {self.time_zone}'
+                   f'Часовой пояс: <b>{self.time_zone}</b>' \
+                   f'{self.incomplete_preview()}'
         else:
             if self.fiat_banks == ['everyone']:
                 banks = 'Любой'
             else:
-                banks = '\n'.join(self.fiat_banks)
+                banks = '\n-'.join(self.fiat_banks)
             print(self.rate)
-            text = f'Отдаете: {self.have_count_w_com()} {sign_have_currency}\n' \
-                   f'Получаете: {self.get_count_w_com()} VST {sign_get_currency}\n' \
-                   f'Курс: {self.show_rate}\n' \
+            text = f'Информация о заявке <b>№{self.id}:</b>\n\n' \
+                   f'Отдаете: <b>{self.have_count_w_com()} {sign_have_currency}</b>\n' \
+                   f'Получаете: <b>{self.get_count()} VST {sign_get_currency}</b>\n' \
+                   f'Курс обмена: {self.show_rate}\n' \
                    f'Рейтинг создателя заявки: {self.rating}\n' \
                    f'Возможные способы получить {self.get_currency}:\n' \
                    f'{banks}\n' \
-                   f'Часовой пояс: {self.time_zone}'
+                   f'Часовой пояс: <b>{self.time_zone}</b>' \
+                   f'{self.incomplete_preview()}'
 
         return text
 
@@ -701,28 +740,32 @@ class Ask(Ask_ch):
         sign_get_currency = services.signs[self.get_currency]
         if self.type == 'vst':
             cards_banks = set([i.bank.lower() for i in self.fiat_cards])
-            cards_banks = '\n'.join(cards_banks)
+            cards_banks = '\n-'.join(cards_banks)
 
-            text = f'Получаете: {self.have_count_w_com()} VST {sign_have_currency}\n' \
+            text = f'Информация о заявке <b>№{self.id}:</b>\n\n' \
                    f'Отдаете: {self.get_count_w_com()} {sign_get_currency}\n' \
-                   f'Курс: {self.show_rate}\n' \
+                   f'Получаете (с учетом комиссии сервиса): {self.have_currency_count} VST {sign_have_currency}\n' \
+                   f'Курс обмена: {self.show_rate}\n' \
                    f'Рейтинг создателя заявки: {self.rating}\n' \
                    f'Возможные способы получить {self.get_currency}:\n' \
                    f'{cards_banks}\n' \
-                   f'Часовой пояс: {self.time_zone}'
+                   f'Часовой пояс: {self.time_zone}' \
+                   f'{self.incomplete_preview()}'
         else:
             if self.fiat_banks == ['everyone']:
                 banks = 'Любой'
             else:
                 banks = '\n'.join(self.fiat_banks)
-            print(self.rate)
-            text = f'Получаете: {self.have_count_w_com()} {sign_have_currency}\n' \
-                   f'Отдаете: {self.get_count_w_com()} VST {sign_get_currency}\n' \
-                   f'Курс: {self.show_rate}\n' \
+
+            text = f'Информация о заявке <b>№{self.id}:</b>\n\n' \
+                   f'Отдаете (с учетом комиссии сервиса): <b>{self.get_count_w_com()} VST {sign_get_currency}</b>\n' \
+                   f'Получаете: <b>{self.have_count_w_com()} {sign_have_currency}</b>\n' \
+                   f'Курс обмена: {self.show_rate}\n' \
                    f'Рейтинг создателя заявки: {self.rating}\n' \
                    f'Возможные способы получить {self.get_currency}:\n' \
                    f'{banks}\n' \
-                   f'Часовой пояс: {self.time_zone}'
+                   f'Часовой пояс: <b>{self.time_zone}</b>' \
+                   f'{self.incomplete_preview()}'
 
         return text
 
@@ -732,13 +775,13 @@ class Ask(Ask_ch):
         if self.type == 'vst':
             return f'VST {sign_have_currency} {self.have_count_w_com()} ⇒ {sign_get_currency} {self.get_count_w_com()} {self.show_rate}'
 
-        return f'{sign_have_currency} {self.have_count_w_com()} ⇒ VST {sign_get_currency} {self.get_count_w_com()} {self.show_rate}'
+        return f'{sign_have_currency} {self.have_count_w_com()} ⇒ VST {sign_get_currency} {self.get_count()} {self.show_rate}'
 
     def button_text_reverse(self):
         sign_have_currency = services.signs[self.have_currency]
         sign_get_currency = services.signs[self.get_currency]
         if self.type == 'vst':
-            return f'{sign_get_currency} {self.get_count_w_com()} ⇒ VST {sign_have_currency} {self.have_count_w_com()} {self.show_rate}'
+            return f'{sign_get_currency} {self.get_count_w_com()} ⇒ VST {sign_have_currency} {self.have_currency_count} {self.show_rate}'
 
         return f'VST {sign_get_currency} {self.get_count_w_com()} ⇒ {sign_have_currency} {self.have_count_w_com()} {self.show_rate}'
 
@@ -770,6 +813,11 @@ class Deals:
 
         deal = Deal()
         type = user.pop_data.pop('d_type')
+        count_max = 0
+        if 'd_count_incomplete' in user.pop_data:
+            count_max = ask.have_currency_count - user.pop_data['d_count_incomplete']
+            ask.have_currency_count = user.pop_data['d_count_incomplete']
+
         if type == 'vst':
             banks = []
             for i in user.pop_data['d_banks']:
@@ -818,11 +866,13 @@ class Deals:
 
         # info
         deal.rate = ask.rate
+        deal.show_rate = ask.show_rate
         deal.owner_id = ask.trade_id_owner
         deal.trade_id = user.trade_id
         deal.id = ask.id
 
         deal.ask = ask.to_json()
+        deal.ask.update({'count_max': count_max})
 
         self.__deals.update({ask.id: deal})
         self.Asks.remove_ask(ask.id) #todo remove
@@ -902,6 +952,7 @@ class Deal(Deal_ch):
         self.fiat_choose_card = []
 
         # info
+        self.show_rate = 0
         self.rate = 0
         self.owner_id = 0
         self.trade_id = 0
@@ -1050,6 +1101,7 @@ class Deal(Deal_ch):
             'ask': self.ask,
             'cancel': self.cancel,
             'moderate': self.moderate,
+            'show_rate': self.show_rate
         }
 
     def load_from_json(self, config):
@@ -1078,6 +1130,7 @@ class Deal(Deal_ch):
         self.ask = config['ask']
         self.cancel = config['cancel']
         self.moderate = config['moderate']
+        self.show_rate = config['show_rate']
 
         if self.fiat_choose_card:
             self.fiat_choose_card = Card(self.fiat_choose_card)
@@ -1087,21 +1140,17 @@ class Deal(Deal_ch):
         return f'{self.vista_count} VST {self.vista_currency} ⇒ {self.fiat_count} {self.fiat_currency} {self.rate}'
 
     def CreateAsk(self, UsersBase):
-        UserOwner = UsersBase.get_user(self.owner_id)
-        ask = Ask()
-        ask.load_from_json(self.ask)
-        ask.rating = UserOwner.rating
-        ask.time_zone = UserOwner.time_zone
-
-        if ask.type == 'vst':
-            ask.have_currency_count -= self.vista_count
-        else:
-            ask.have_currency_count -= self.fiat_count
-
-        if ask.have_currency_count > 1:
-            return ask
-        else:
-            return None
+        print(self.ask['count_max'])
+        if self.ask['count_max']:
+            print(self.ask['count_max'], self.ask['min_incomplete'])
+            if self.ask['count_max'] >= self.ask['min_incomplete']:
+                UserOwner = UsersBase.get_user(self.owner_id)
+                ask = Ask()
+                ask.load_from_json(self.ask)
+                ask.rating = UserOwner.rating
+                ask.time_zone = UserOwner.time_zone
+                ask.have_currency_count = self.ask['count_max']
+                return ask
 
 
 class DealsOldBase:
@@ -1117,8 +1166,8 @@ class DealsOldBase:
             'id_B': userB,
             'text': Deal.button_text(),
             'referral': referral,
-            'profit': profit,
-            'date': datetime.datetime.now().strftime('%H:%M %d.%m.%Y'),
+            'profit': round(profit, 2),
+            'date': datetime.datetime.now().strftime('%d.%m.%Y %H:%M'),
             'vst_count': Deal.vista_count
         })
 
@@ -1130,7 +1179,7 @@ class DealsOldBase:
         with open('base/dealsOld.json', 'r') as file:
             self.__base = json.loads(file.read())
 
-    def getWeb(self, id):
+    def getWeb(self, id, date1, date2):
         if id == -1:
             base = [list(i.values()) for i in self.__base]
         else:
@@ -1139,15 +1188,34 @@ class DealsOldBase:
                 if i['id_A'] == id or i['id_B'] == id:
                     base.append(list(i.values()))
 
-        return json.dumps(base)
+        base_date = []
+        if date1 == '' and date2 == '':
+            base_date = base
+        elif date2 == '':
+            date1 = datetime.datetime.strptime(date1, '%d.%m.%Y %H:%M')
+            for i in base:
+                date_cur = datetime.datetime.strptime(i[5], '%d.%m.%Y %H:%M')
+                if date1 <= date_cur:
+                    base_date.append(i)
+        elif date1 == '':
+            date2 = datetime.datetime.strptime(date1, '%d.%m.%Y %H:%M')
+            for i in base:
+                date_cur = datetime.datetime.strptime(i[5], '%d.%m.%Y %H:%M')
+                if date_cur <= date2:
+                    base_date.append(i)
+        else:
+            date1 = datetime.datetime.strptime(date1, '%d.%m.%Y %H:%M')
+            date2 = datetime.datetime.strptime(date2, '%d.%m.%Y %H:%M')
+            for i in base:
+                date_cur = datetime.datetime.strptime(i[5], '%d.%m.%Y %H:%M')
+                if date1 <= date_cur <= date2:
+                    base_date.append(i)
 
 
-class ReferralWithdrawal:
-    def __init__(self):
-        self.__base = []
-        self.load()
-        self.id = 0
+        return json.dumps(base_date)
 
+
+class ReferralWithdrawal(Sql):
     def add(self, user, card, currency):
         if currency == 'vusd':
             count = user.vusd
@@ -1156,37 +1224,19 @@ class ReferralWithdrawal:
             count = user.veur
             user.veur = 0
 
-        self.__base.append({
-            'id': self.id,
-            'currency': currency,
-            'userId': user.trade_id,
-            'card': card.collect_full('web'),
-            'count': count
-        })
-        self.id += 1
+        sql = f"""INSERT INTO ReferralWithdrawals (userTradeId, currency, card, count, status) 
+                    values ({user.trade_id}, 
+                            '{currency}', 
+                            '{card.collect_full('web')}',
+                            {count},
+                            'wait'
+                            )"""
+        self.SQL(sql)
 
-    def remove(self, id):
-        new_base = []
-        for i in self.__base:
-            if i['id'] != id:
-                new_base.append(i)
-        self.__base = new_base
+    def done(self, id):
+        sql = f"""UPDATE ReferralWithdrawals SET status = 'done' where id = {id}"""
+        self.SQL(sql)
 
-    def get_web(self):
-        ans = []
-        for i in self.__base:
-            ans.append(list(i.values()))
-        return json.dumps(ans)
-
-    def save(self):
-        with open('base/ReferralWithdrawal.json', 'w') as file:
-            file.write(json.dumps({
-                'id': self.id,
-                'base': self.__base
-            }))
-
-    def load(self):
-        with open('base/ReferralWithdrawal.json', 'r') as file:
-            base = json.loads(file.read())
-            self.__base = base['base']
-            self.id = base['id']
+    def getWait(self):
+        sql = """SELECT * from ReferralWithdrawals where status = 'wait'"""
+        return self.SQL(sql)

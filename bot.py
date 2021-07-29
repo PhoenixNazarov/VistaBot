@@ -1,10 +1,12 @@
 import time
-
+import random
 import telebot
 
 import screens
 
 import services
+
+import users
 
 
 class Bot:
@@ -16,9 +18,11 @@ class Bot:
         self.Rates = config.Rates
         self.Asks = config.Asks
         self.Deals = config.Deals
-        self.ReferralWithdrawal = config.ReferralWithdrawal
+
+        self.ReferralWithdrawal = users.ReferralWithdrawal()
 
     def initiate(self):
+
         @self.bot.message_handler(commands = ['start'])
         def start_message_oper(message):
             self.__start_message(message)
@@ -110,7 +114,13 @@ class Bot:
             self.send_screen(user, screens.my_asks('main', user, self.Asks))
         elif message.text == '💵 Активные заявки':
             user.clear()
-            self.send_screen(user, screens.show_asks('choose_cur', user, self.Asks))
+            user.pop_data['filter'] = {
+                'index': 0,
+                'have_cur': 'all'
+            }
+            asks = self.Asks.asks_filter(user.pop_data['filter'])
+            self.send_screen(user, screens.show_asks('show_asks', user, self.Asks, asks))
+
         elif message.text == '💵 Мои сделки':
             user.clear()
             self.send_screen(user, screens.my_deal('my_deal', user, self.Deals))
@@ -240,6 +250,18 @@ class Bot:
                     num = float(message.text)
                     if num > 0:
                         user.pop_data.update({'count': num})
+                        self.send_screen(user, screens.create_asks('incomplete', user))
+                    else:
+                        self.send_screen(user, screens.create_asks('count_error', user))
+                else:
+                    self.send_screen(user, screens.create_asks('count_error', user))
+
+            elif user.position.endswith('count_incomplete'):
+                text = message.text.replace(',', '.')
+                if text.isdigit():
+                    num = int(message.text)
+                    if 0 < num < user.pop_data['count']:
+                        user.pop_data.update({'count_incomplete': num})
                         self.send_screen(user, screens.create_asks('choose_s', user))
                     else:
                         self.send_screen(user, screens.create_asks('count_error', user))
@@ -267,6 +289,32 @@ class Bot:
             if user.position.endswith('banks'):
                 user.pop_data['d_banks'].update({message.text: 1})
                 self.send_screen(user, screens.show_asks('get_fiat_banks', user, self.Asks))
+
+            elif user.position.endswith('count_incomplete'):
+                text = message.text.replace(',', '.')
+                if text.isdigit():
+                    num = int(message.text)
+                    ask = self.Asks.get_ask_from_id(user.pop_data['d_ask_id'])
+                    if ask.have_currency_count > num >= ask.min_incomplete:
+                        user.pop_data.update({'d_count_incomplete': num})
+                        self.tg_show_original_rel(user)
+                    else:
+                        self.send_screen(user, screens.create_asks('count_error', user))
+                else:
+                    self.send_screen(user, screens.create_asks('count_error', user))
+
+        # deal answer
+        elif user.position.startswith('count_answer'):
+            num = user.position.split('_')[2]
+            deal = self.Deals.get_deal(num)
+            if message.text == str(user.pop_data.pop('answer')):
+                if deal.logic_control('fiat_accept', user):
+                    user_A = self.Users.tg_id_identification(deal.vista_people)
+                    user_B = self.Users.tg_id_identification(deal.fiat_people)
+                    self.send_screen(user_A, deal.logic_message(user_A))
+                    self.send_screen(user_B, deal.logic_message(user_B))
+            else:
+                self.send_screen(user, screens.deal('5_A_ans', deal, user))
 
     def __query(self, call):
         user = self.Users.tg_identification(call.message)
@@ -408,6 +456,17 @@ class Bot:
                     user.position = 'create_ask_count'
                     self.edit_screen(user, screens.create_asks('count', user), call.message.id)
 
+            # incomplete
+            elif call.data.endswith('incomplete'):
+                incomplete = int(call.data.split('_')[1])
+                if incomplete == 1:
+                    user.pop_data.update({'incomplete': 1})
+                    user.position = 'create_ask_count_incomplete'
+                    self.edit_screen(user, screens.create_asks('incomplete_count', user), call.message.id)
+                else:
+                    user.pop_data.update({'incomplete': 0})
+                    self.edit_screen(user, screens.create_asks('choose_s', user), call.message.id)
+
             # choose second currency
             elif call.data.endswith('scurrency'):
                 currency = call.data.split('_')[1]
@@ -423,6 +482,7 @@ class Bot:
             elif call.data.endswith('rate'):
                 user.pop_data.update({'rate': user.pop_data['cbrf_rate']})
                 self.create_ask_5_step(user, call.message.id)
+
 
             # choose cards
             elif call.data.endswith('cards'):
@@ -472,8 +532,8 @@ class Bot:
             elif call.data.endswith('prew'):
                 ans = call.data.split('_')[1]
                 if ans == 'yes':
-                    self.Asks.add_ask(user.unsave_pop_data.pop('ask'))
-                    self.edit_screen(user, screens.create_asks('public', user), call.message.id)
+                    ask = self.Asks.add_ask(user.unsave_pop_data.pop('ask'))
+                    self.edit_screen(user, screens.create_asks('public', user, Ask = ask), call.message.id)
                 else:
                     user.unsave_pop_data.pop('ask')
                     self.edit_screen(user, screens.create_asks('not_public', user), call.message.id)
@@ -601,28 +661,14 @@ class Bot:
             elif call.data.endswith('dealAccept'):
                 num = call.data.split('_')[2]
                 user.pop_data.update({'d_ask_id': num})
+                self.tg_show_original_rel(user, call.message.id)
+
+            elif call.data.endswith('dealIncomplete'):
+                num = call.data.split('_')[2]
+                user.pop_data.update({'d_ask_id': num, 'd_ask_incomplete': 1})
+                user.position = 'd_ask_count_incomplete'
                 ask = self.Asks.get_ask_from_id(num)
-                if 'd_type' not in user.pop_data or 'd_vst' not in user.pop_data:
-                    user.pop_data['d_type'] = ask.type
-                    if user.pop_data['d_type'] == 'fiat':
-                        user.pop_data.update({
-                            'd_vst': ask.get_currency,
-                            'd_fiat': ask.have_currency
-                        })
-                        user.pop_data['d_card_after'] = 1
-                        cards = user.get_card_currency(user.pop_data['d_fiat'])
-                        cards_name = {i.name: 0 for i in cards}
-                        user.pop_data.update({'d_cards_name': cards_name})
-                        self.edit_screen(user, screens.show_asks('get_fiat_card', user, self.Asks), call.message.id)
-                    else:
-                        user.pop_data.update({
-                            'd_vst': ask.have_currency,
-                            'd_fiat': ask.get_currency,
-                            'd_banks': {'everyone': 1}
-                        })
-                        self.edit_screen(user, screens.show_asks('vst_send', user, self.Asks), call.message.id)
-                else:
-                    self.edit_screen(user, screens.show_asks('vst_send', user, self.Asks), call.message.id)
+                self.edit_screen(user, screens.show_asks('incompleteCount', user, self.Asks, ask), call.message.id)
 
             elif call.data.endswith('vscard'):
                 num = call.data.split('_')[2]
@@ -658,20 +704,19 @@ class Bot:
                     self.edit_screen(user_B, deal.logic_message(user_B), call.message.id)
 
             elif call.data.endswith('fiat_accept'):
-                if deal.logic_control('fiat_accept', user):
-                    self.edit_screen(user_A, deal.logic_message(user_A), call.message.id)
-                    self.send_screen(user_B, deal.logic_message(user_B))
+                self.edit_screen(user, screens.deal('5_A_ans', deal, user), call.message.id)
 
             elif call.data.endswith('vst_after'):
                 minutes = int(call.data.split('_')[2])
-                deal.vista_send_over = int(time.time() + minutes*60)
+                deal.vista_send_over = int(time.time() + minutes * 60)
                 self.edit_screen(user_A, deal.logic_message(user_A), call.message.id)
+                self.edit_screen(user_B, deal.logic_message(user_A), call.message.id)
 
             # choose card and set timer
             elif call.data.endswith('show_card'):
                 card = int(call.data.split('_')[2])
                 card = deal.vista_people_fiat_card[card]
-                self.edit_screen(user_B, deal.logic_message(user_B, ['show',card]), call.message.id)
+                self.edit_screen(user_B, deal.logic_message(user_B, ['show', card]), call.message.id)
 
             elif call.data.endswith('see_card'):
                 self.edit_screen(user_B, deal.logic_message(user_B), call.message.id)
@@ -681,17 +726,19 @@ class Bot:
                 card = deal.vista_people_fiat_card[card]
                 deal.fiat_choose_card = card
                 self.edit_screen(user_B, deal.logic_message(user_B), call.message.id)
+                self.edit_screen(user_A, deal.logic_message(user_B), call.message.id)
 
             elif call.data.endswith('fiat_after'):
                 minutes = int(call.data.split('_')[2])
                 deal.fiat_send_over = int(time.time() + minutes * 60)
                 self.edit_screen(user_B, deal.logic_message(user_B), call.message.id)
+                self.edit_screen(user_A, deal.logic_message(user_B), call.message.id)
 
             elif call.data.endswith('cancel'):
                 self.edit_screen(user, screens.deal('cancel', deal), call.message.id)
             elif call.data.endswith('cancel_accept'):
-                user.rating -= 1
                 if deal.logic_control('cancel', user):
+                    user.rating -= 1
                     deal.cancel = user.tg_id
                     self.edit_screen(user, deal.logic_message(user), call.message.id)
                     if user_A.tg_id == user.tg_id:
@@ -805,6 +852,41 @@ class Bot:
             self.edit_screen(user, screens.show_asks('show_asks', user, self.Asks, asks), message_id)
 
     # deal
+    def tg_show_original_rel(self, user, tp=0):
+        ask = self.Asks.get_ask_from_id(user.pop_data['d_ask_id'])
+        if 'd_type' not in user.pop_data or 'd_vst' not in user.pop_data:
+            user.pop_data['d_type'] = ask.type
+            if user.pop_data['d_type'] == 'fiat':
+                user.pop_data.update({
+                    'd_vst': ask.get_currency,
+                    'd_fiat': ask.have_currency
+                })
+                user.pop_data['d_card_after'] = 1
+                cards = user.get_card_currency(user.pop_data['d_fiat'])
+                cards_name = {i.name: 0 for i in cards}
+                user.pop_data.update({'d_cards_name': cards_name})
+                if tp:
+                    self.edit_screen(user, screens.show_asks('get_fiat_card', user, self.Asks), tp)
+                else:
+                    self.send_screen(user, screens.show_asks('get_fiat_card', user, self.Asks))
+
+            else:
+                user.pop_data.update({
+                    'd_vst': ask.have_currency,
+                    'd_fiat': ask.get_currency,
+                    'd_banks': {'everyone': 1}
+                })
+                if tp:
+                    self.edit_screen(user, screens.show_asks('vst_send', user, self.Asks), tp)
+                else:
+                    self.send_screen(user, screens.show_asks('vst_send', user, self.Asks))
+
+        else:
+            if tp:
+                self.edit_screen(user, screens.show_asks('vst_send', user, self.Asks), tp)
+            else:
+                self.send_screen(user, screens.show_asks('vst_send', user, self.Asks))
+
     def notification_deal_users(self, deal):
         user_A = self.Users.tg_id_identification(deal.vista_people)
         user_B = self.Users.tg_id_identification(deal.fiat_people)
@@ -812,8 +894,6 @@ class Bot:
         screen_A = deal.logic_message(user_A)
         screen_B = deal.logic_message(user_B)
         if screen_A:
-            print('1ok')
             self.send_screen(user_A, screen_A)
         if screen_B:
-            print('2ok')
             self.send_screen(user_B, screen_B)

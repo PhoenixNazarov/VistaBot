@@ -83,7 +83,7 @@ class BotShow:
             except:
                 pass
 
-        # self.bot.polling(none_stop = True, interval = 0)
+        self.bot.polling(none_stop = True, interval = 0)
 
     def send_screen(self, user, screen):
         text, buttons = screen
@@ -183,7 +183,7 @@ class BotShow:
                 num = call.data.split('_')[2]
                 ask = self.Asks.get_ask_from_id(num)
                 if ask.can_show():
-                    self.send_screen(user, screens.show_asks('show_ask', user, self.Asks, ask))
+                    self.send_screen(user, screens.show_asks('show_ask_for_show', user, self.Asks, ask))
                 else:
                     self.delete_message(user, call.message.id)
 
@@ -204,7 +204,6 @@ class BotShow:
 
         elif call.data == 'delete':
             self.delete_message(user, call.message.id)
-
 
     def show_ask_filter(self, user, message_id):
         if 'filter' in user.pop_data:

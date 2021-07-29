@@ -73,19 +73,19 @@ class Config:
     def initiate(self):
         threading.Thread(target = self.Rates.updater).start()
         print('Rates has started')
-        time.sleep(1)
+        time.sleep(0.5)
 
         threading.Thread(target = self.Bot.initiate).start()
         print('Bot has started')
-        time.sleep(1)
+        time.sleep(0.5)
 
         threading.Thread(target = self.saving_base).start()
         print('Saving_base has started')
-        time.sleep(1)
+        time.sleep(0.5)
 
         threading.Thread(target = self.Admin_panel.initiate).start()
         print('Admin_panel has started')
-        time.sleep(1)
+        time.sleep(0.5)
 
         threading.Thread(target = self.BotShow.initiate).start()
         print('Bot_show has started')
@@ -97,7 +97,6 @@ class Config:
             self.Asks.save()
             self.Data.save()
             self.Deals.save()
-            self.ReferralWithdrawal.save()
             self.DealsOldBase.save()
 
             time.sleep(1)

@@ -76,6 +76,7 @@ $(document).ready(function(){
             $('#rate').append(data.web.rate);
             $('#rating').append(data.rating);
             $('#time_zone').append(data.time_zone);
+            $('#incomplete').append(data.incomplete);
 
             // vst card
             $('#vst_card').append(`<tr><td> ${data.vst_card} </td></tr>`)

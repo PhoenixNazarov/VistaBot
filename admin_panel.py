@@ -1,9 +1,12 @@
 import flask
+import datetime
 from flask import Flask, request, Response
 import json
 
 import screens
 import services
+
+import users
 
 
 class Admin_panel:
@@ -21,7 +24,7 @@ class Admin_panel:
         self.Data = config.Data
         self.Deals = config.Deals
         self.DealsOldBase = config.DealsOldBase
-        self.ReferralWithdrawal = config.ReferralWithdrawal
+        self.ReferralWithdrawal = users.ReferralWithdrawal()
 
     def initiate(self):
         self.set()
@@ -126,6 +129,7 @@ class Admin_panel:
             ask = self.Asks.get_ask_from_id(ask_id)
             ret = ask.to_json()
             ret.update({'web': ask.web()})
+            ret.update({'incomplete': ask.incomplete_preview()})
             ret.update({'vst_card': ask.vst_card.collect_full('web')})
             ret.update({'fiat_cards': [i.collect_full('web') for i in ask.fiat_cards]})
             ret.update({'fiat_banks': '<br>'.join(ask.fiat_banks)})
@@ -137,6 +141,10 @@ class Admin_panel:
             ask_id = int(request.form['ask_id'])
             ask = self.Asks.get_ask_from_id(ask_id)
             ask.status = 'ok'
+
+            user = self.Users.trade_id_identification(ask.trade_id_owner)
+            self.Bot.send_screen(user, screens.create_asks('admin_public', user, Ask = ask))
+
             ret = '{ok}'
 
             return Response(json.dumps(ret))
@@ -144,6 +152,12 @@ class Admin_panel:
         @self.app.route("/delete_ask", methods = ['POST'])
         def delete_ask():
             ask_id = int(request.form['ask_id'])
+
+            ask = self.Asks.get_ask_from_id(ask_id)
+            user = self.Users.trade_id_identification(ask.trade_id_owner)
+            self.Bot.send_screen(user, screens.create_asks('admin_unpublic', user, Ask = ask))
+
+
             self.Asks.remove_ask(ask_id)
             ret = '{ok}'
 
@@ -265,19 +279,22 @@ class Admin_panel:
         # REFERRAL WITHDRAWAL
         @self.app.route("/get_withdrawals", methods = ['POST'])
         def get_withdrawals():
-            return Response(self.ReferralWithdrawal.get_web())
+            return Response(json.dumps(self.ReferralWithdrawal.getWait()))
 
         @self.app.route("/allow_withdrawal", methods = ['POST'])
         def allow_withdrawal():
             id = int(request.form['id'])
-            self.ReferralWithdrawal.remove(id)
-            return Response(self.ReferralWithdrawal.get_web())
+            self.ReferralWithdrawal.done(id)
+            return Response('ok')
 
         # OLD DEALS
         @self.app.route("/get_old_deals", methods = ['POST'])
         def get_old_deals():
             id = int(request.form['id'])
-            return Response(self.DealsOldBase.getWeb(id))
+
+            date1 = request.form['date1']
+            date2 = request.form['date2']
+            return Response(self.DealsOldBase.getWeb(id, date1, date2))
 
         @self.app.after_request
         def after_request(response):

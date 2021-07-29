@@ -9,13 +9,14 @@
      <!-- FontAwesome Styles-->
     <link href="assets/css/font-awesome.css" rel="stylesheet" />
      <!-- Morris Chart Styles-->
-   
+
     <!-- Custom Styles-->
     <link href="assets/css/custom-styles.css" rel="stylesheet" />
      <!-- Google Fonts-->
    <link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css' />
      <!-- TABLE STYLES-->
     <link href="assets/js/dataTables/dataTables.bootstrap.css" rel="stylesheet" />
+    <link rel="stylesheet" href="assets/css/bootstrap-datetimepicker.min.css" />
 </head>
 
 <body>
@@ -66,6 +67,31 @@
         <div id="page-wrapper" >
             <div id="page-inner">
                 <div class="row">
+                    <div class="container">
+                        <div class='col-md-5'>
+                          <div class="form-group">
+                             <div class='input-group date' id='datetimepicker6'>
+                                <input type='text' class="form-control" id = 'datetimepicker1_inp'/>
+                                <span class="input-group-addon">
+                                <span class="glyphicon glyphicon-calendar"></span>
+                                </span>
+                             </div>
+                          </div>
+                        </div>
+                        <div class='col-md-5'>
+                          <div class="form-group">
+                             <div class='input-group date' id='datetimepicker7'>
+                                <input type='text' class="form-control" id = 'datetimepicker2_inp' />
+                                <span class="input-group-addon">
+                                <span class="glyphicon glyphicon-calendar"></span>
+                                </span>
+                             </div>
+                          </div>
+                        </div>
+                        <div class="col-md-2">
+                            <button id="update" type="button" class="btn btn-primary btn btn-block">Получить</button>
+                        </div>
+                    </div>
                     <div class="col-md-12">
                         <div class="panel panel-default">
                             <div class="panel-body">
@@ -109,10 +135,13 @@
     <script src="assets/js/dataTables/jquery.dataTables.js"></script>
     <script src="assets/js/dataTables/dataTables.bootstrap.js"></script>
 
+   <script src="assets/js/datePicker/moment-with-locales.min.js"></script>
+   <script src="assets/js/datePicker/bootstrap-datetimepicker.min.js"></script>
+
          <!-- Custom Js -->
     <script src="assets/js/using/data.js"></script>
     <script src="assets/js/using/olddeals.js"></script>
-    
-   
+
+
 </body>
 </html>

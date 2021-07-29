@@ -23,8 +23,8 @@ $(document).ready(function(){
 
             for (let i = 0; i < data.length; i++) {
                 let id = data[i][0];
-                let currency = data[i][1];
-                let userId = data[i][2];
+                let userId = data[i][1];
+                let currency = data[i][2];
                 let card = data[i][3];
                 let count = data[i][4];
 
