@@ -1,12 +1,15 @@
-import flask
 import datetime
 from flask import Flask, request, Response
 import json
 
 import screens
-import services
 
-import users
+from classes import Asks, Users, Data, Deals, ReferralWithdrawal
+Asks = Asks()
+Users = Users()
+Data = Data()
+Deals = Deals()
+ReferralWithdrawal = ReferralWithdrawal()
 
 
 class Admin_panel:
@@ -18,13 +21,7 @@ class Admin_panel:
 
         self.auth = ['127.0.0.1']
 
-        self.Users = config.Users
         self.Bot = config.Bot
-        self.Asks = config.Asks
-        self.Data = config.Data
-        self.Deals = config.Deals
-        self.DealsOldBase = config.DealsOldBase
-        self.ReferralWithdrawal = users.ReferralWithdrawal()
 
     def initiate(self):
         self.set()
@@ -59,56 +56,35 @@ class Admin_panel:
         @self.app.route("/index", methods = ['POST'])
         def index():
             return Response(json.dumps({
-                'users': self.Users.get_count(),
-                'asks': self.Asks.get_count(),
+                'users': Users.get_count(),
+                'asks': Asks.get_count(),
                 'deals': self.Deals.get_count(),
             }))
 
         # USERS
         @self.app.route("/get_users", methods = ['POST'])
         def get_users():
-            return Response(self.Users.get_users())
+            return Response(json.dumps(Users.getUsers(output = 'web')))
 
         @self.app.route("/get_user", methods = ['POST'])
         def get_user():
             trade_id = request.form['id']
-            user = self.Users.get_user(trade_id)
-            if not user:
-                return Response('false')
-
-            js = user.to_json()
-            # referrals
-            referrals = []
-            for i in user.referal_list:
-                ref_user = self.Users.tg_id_identification(i)
-                referrals.append([ref_user.trade_id, ref_user.fio])
-
-            js.update({'referrals': referrals})
-            if user.referal_to:
-                js.update({'main_referral': self.Users.tg_id_identification(user.referal_to).trade_id})
-
-            # cards
-            cards = []
-            for i in user.cards:
-                cards.append(i.collect_full('web'))
-            js.pop('cards')
-            js.update({'cards': cards})
-
-            return Response(json.dumps(js))
+            user = Users.identification(tradeId = trade_id)
+            return Response(json.dumps(user.to_json()))
 
         @self.app.route("/change_user", methods = ['POST'])
         def change_user():
             tg_id = request.form['tg_id']
             type = request.form['type']
-            user = self.Users.tg_id_identification(int(tg_id))
+            user = Users.identification(telegramId = tg_id)
             if not user:
                 return Response('false')
 
             if type == 'ban':
                 if user.ban:
-                    user.ban = False
+                    user.ban = 0
                 else:
-                    user.ban = True
+                    user.ban = 1
 
             elif type == 'rating':
                 count = request.form['count']
@@ -121,28 +97,20 @@ class Admin_panel:
         # ASKS
         @self.app.route("/get_asks", methods = ['POST'])
         def get_asks():
-            return Response(json.dumps(self.Asks.get_asks_web()))
+            return Response(json.dumps(Asks.getAsks(preview='web')))
 
         @self.app.route("/get_ask", methods = ['POST'])
         def get_ask():
             ask_id = int(request.form['id'])
-            ask = self.Asks.get_ask_from_id(ask_id)
-            ret = ask.to_json()
-            ret.update({'web': ask.web()})
-            ret.update({'incomplete': ask.incomplete_preview()})
-            ret.update({'vst_card': ask.vst_card.collect_full('web')})
-            ret.update({'fiat_cards': [i.collect_full('web') for i in ask.fiat_cards]})
-            ret.update({'fiat_banks': '<br>'.join(ask.fiat_banks)})
-
-            return Response(json.dumps(ret))
+            return Response(json.dumps(Asks.getAsk(ask_id).to_json()))
 
         @self.app.route("/allow_ask", methods = ['POST'])
         def allow_ask():
             ask_id = int(request.form['ask_id'])
-            ask = self.Asks.get_ask_from_id(ask_id)
-            ask.status = 'ok'
+            ask = Asks.getAsk(ask_id)
+            ask.setStatus('ok')
 
-            user = self.Users.trade_id_identification(ask.trade_id_owner)
+            user = Users.identification(tradeId = ask.trade_id_owner)
             self.Bot.send_screen(user, screens.create_asks('admin_public', user, Ask = ask))
 
             ret = '{ok}'
@@ -153,12 +121,11 @@ class Admin_panel:
         def delete_ask():
             ask_id = int(request.form['ask_id'])
 
-            ask = self.Asks.get_ask_from_id(ask_id)
-            user = self.Users.trade_id_identification(ask.trade_id_owner)
+            ask = Asks.getAsk(ask_id)
+            user = Users.identification(tradeId = ask.trade_id_owner)
             self.Bot.send_screen(user, screens.create_asks('admin_unpublic', user, Ask = ask))
 
-
-            self.Asks.remove_ask(ask_id)
+            ask.setStatus('removed')
             ret = '{ok}'
 
             return Response(json.dumps(ret))
@@ -166,33 +133,24 @@ class Admin_panel:
         # DEALS
         @self.app.route("/get_deals", methods = ['POST'])
         def get_deals():
-            return Response(json.dumps(self.Deals.get_deals_for_web()))
+            return Response(json.dumps(Deals.getDeals('web', active = 'work')))
 
         @self.app.route("/get_deal", methods = ['POST'])
         def get_deal():
             id = request.form['id']
-            Deal = self.Deals.get_deal(id)
-            acp = Deal.to_json()
-            acp['a_vst_card'] = Deal.vista_people_vst_card.collect_full('web')
-            acp['b_vst_card'] = Deal.fiat_people_vst_card.collect_full('web')
-            acp['g_vst_card'] = Deal.garant_card().replace('\n', '<br>')
-            acp['a_trade_id'] = self.Users.tg_id_identification(Deal.vista_people).trade_id
-            acp['b_trade_id'] = self.Users.tg_id_identification(Deal.fiat_people).trade_id
-
-
-
-            return Response(json.dumps(acp))
+            Deal = Deals.getDeal(id)
+            return Response(json.dumps(Deal.to_json()))
 
         @self.app.route("/remove_deal", methods = ['POST'])
         def remove_deal():
             id = request.form['id']
-            Deal = self.Deals.remove_deal(id)
+            Deals.getDeal(id).updateStatus('remove')
             return Response(json.dumps('ok'))
 
         @self.app.route("/accept_garant_deal", methods = ['POST'])
         def accept_garant_deal():
             id = request.form['id']
-            Deal = self.Deals.get_deal(id)
+            Deal = Deals.getDeal(id)
             Deal.logic_control('garant_accept', 'admin')
 
             self.Bot.notification_deal_users(Deal)
@@ -202,34 +160,18 @@ class Admin_panel:
         @self.app.route("/send_garant_deal", methods = ['POST'])
         def send_garant_deal():
             id = request.form['id']
-            Deal = self.Deals.get_deal(id)
+            Deal = Deals.getDeal(id)
             Deal.logic_control('garant_send', 'admin')
 
             self.Bot.notification_deal_users(Deal)
+            referralMessage, newAsk = Deal.end()
+            if referralMessage['referral_A']:
+                self.Bot.send_screen(referralMessage['referral_A'], screens.referral('bonus', referralMessage['commission'], referralMessage['commissionCurrency']))
+            if referralMessage['referral_B']:
+                self.Bot.send_screen(referralMessage['referral_B'], screens.referral('bonus', referralMessage['commission'], referralMessage['commissionCurrency']))
 
-            user_A = self.Users.tg_id_identification(Deal.vista_people)
-            user_B = self.Users.tg_id_identification(Deal.fiat_people)
-            user_A.rating += 1
-            user_B.rating += 1
-
-            # todo referral bonus
-            referral_cmmission = 0
-            print(Deal.vista_count, Deal.vista_count_without_com)
-            profit = Deal.vista_count - Deal.vista_count_without_com
-            for ref_user in [user_A, user_B]:
-                commission, user, commissionCurrency = self.Users.referralBonus(ref_user, Deal)
-                if commission:
-                    profit -= commission
-                    referral_cmmission += commission
-                    self.Bot.send_screen(user, screens.referral('bonus', user, commission, commissionCurrency))
-
-            ask = Deal.CreateAsk(self.Users)
-            if ask:
-                self.Asks.add_ask(ask)
-
-            self.Deals.remove_deal(Deal.id)
-
-            self.DealsOldBase.AddDeal(Deal, self.Users, referral_cmmission, profit)  # todo last deal data
+            if newAsk:
+                Asks.addAsk(oldAsk = newAsk)
 
             return Response(json.dumps('ok'))
 
@@ -237,14 +179,14 @@ class Admin_panel:
         def notification_deal():
             id = request.form['id']
             pos = request.form['position']
-            Deal = self.Deals.get_deal(id)
+            Deal = Deals.getDeal(id)
             if pos == 'A':
-                user_A = self.Users.tg_id_identification(Deal.vista_people)
+                user_A = Users.identification(telegramId = Deal.vista_people)
                 screen_A = Deal.logic_message(user_A)
                 if screen_A:
                     self.Bot.send_screen(user_A, screen_A)
             else:
-                user_B = self.Users.tg_id_identification(Deal.fiat_people)
+                user_B = Users.identification(telegramId = Deal.fiat_people)
                 screen_B = Deal.logic_message(user_B)
                 if screen_B:
                     self.Bot.send_screen(user_B, screen_B)
@@ -254,7 +196,7 @@ class Admin_panel:
         @self.app.route("/continue_deal", methods = ['POST'])
         def continue_deal():
             id = request.form['id']
-            Deal = self.Deals.get_deal(id)
+            Deal = Deals.getDeal(id)
             Deal.cancel = 0
             Deal.moderate = 0
             self.Bot.notification_deal_users(Deal)
@@ -264,37 +206,45 @@ class Admin_panel:
         # SETTINGS
         @self.app.route("/get_settings", methods = ['POST'])
         def get_settings():
-            return Response(json.dumps(self.Data.to_json()))
+            return Response(json.dumps(Data.to_json()))
 
         @self.app.route("/set_settings", methods = ['POST'])
         def set_settings():
-            self.Data.perc_vst = float(request.form['perc_vst'])
-            self.Data.perc_fiat = float(request.form['perc_fiat'])
-            self.Data.faq = json.loads(request.form['faq'])
-            self.Data.card_usd = request.form['card_usd']
-            self.Data.card_eur = request.form['card_eur']
+            Data.perc_vst = float(request.form['perc_vst'])
+            Data.perc_fiat = float(request.form['perc_fiat'])
+            Data.faq = json.loads(request.form['faq'])
+            Data.card_usd = request.form['card_usd']
+            Data.card_eur = request.form['card_eur']
 
             return Response(json.dumps({'ok': 1}))
 
         # REFERRAL WITHDRAWAL
         @self.app.route("/get_withdrawals", methods = ['POST'])
         def get_withdrawals():
-            return Response(json.dumps(self.ReferralWithdrawal.getWait()))
+            return Response(json.dumps(ReferralWithdrawal.getWait()))
 
         @self.app.route("/allow_withdrawal", methods = ['POST'])
         def allow_withdrawal():
             id = int(request.form['id'])
-            self.ReferralWithdrawal.done(id)
+            ReferralWithdrawal.done(id)
             return Response('ok')
 
         # OLD DEALS
         @self.app.route("/get_old_deals", methods = ['POST'])
         def get_old_deals():
-            id = int(request.form['id'])
+            idOwner = int(request.form['id'])
+            if idOwner == -1:
+                idOwner = None
 
             date1 = request.form['date1']
             date2 = request.form['date2']
-            return Response(self.DealsOldBase.getWeb(id, date1, date2))
+
+            if date1 != '':
+                date1 = datetime.datetime.strptime(date1, '%d.%m.%Y %H:%M').timestamp()
+            if date2 != '':
+                date2 = datetime.datetime.strptime(date2, '%d.%m.%Y %H:%M').timestamp()
+            print(date1, date2)
+            return Response(json.dumps(Deals.getDeals(preview = 'end', idOwner = idOwner, active = 'end', date = (date1, date2))))
 
         @self.app.after_request
         def after_request(response):

@@ -43,6 +43,7 @@ referral_bonus = 0.1
 referral_withdrawal_usd = 5
 referral_withdrawal_eur = 5
 
+count_list_asks = 10
 
 def check_email(mail):
     if '@' not in mail:
