@@ -644,7 +644,7 @@ def show_asks(key, user, Asks_list=None):
             button = telebot.types.InlineKeyboardButton(text = button_text, callback_data = f'd_ask_{i.id}_deal')
             buttons.row(button)
 
-        max_index = Asks.count()
+        max_index = Asks.amount()
         max_index = max_index // 10 + int(max_index % 10 != 0)
         if max_index != 1:
             button1 = telebot.types.InlineKeyboardButton(text = '<=', callback_data = f'd_ask_prev')

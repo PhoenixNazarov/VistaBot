@@ -211,6 +211,10 @@ class Users(Sql):
             return commission, referralUser, commissionCurrency
         return None, None, None
 
+    def amount(self):
+        sql = "SELECT count(id) from Users"
+        return int(self.SQL(sql)[0][0])
+
 
 class Pop_data(Sql):
     def __init__(self, id, dict):
@@ -680,7 +684,7 @@ class Asks(Sql):
                 new_ask.update({i: self.unSaveAsks[i]})
         self.unSaveAsks = new_ask
 
-    def count(self):
+    def amount(self):
         sql = "SELECT count(id) from Asks where status = 'ok'"
         return int(self.SQL(sql)[0][0])
 
@@ -963,6 +967,9 @@ class Deals(Sql):
         sql = f"""SELECT * from Deals where id = {id}"""
         return Deal(self.SQL(sql)[0])
 
+    def amount(self):
+        sql = "SELECT count(id) from Deals where status != 'end'"
+        return int(self.SQL(sql)[0][0])
 
 class Deal(Sql):
     def __init__(self, config):

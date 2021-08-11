@@ -56,9 +56,9 @@ class Admin_panel:
         @self.app.route("/index", methods = ['POST'])
         def index():
             return Response(json.dumps({
-                'users': Users.get_count(),
-                'asks': Asks.get_count(),
-                'deals': self.Deals.get_count(),
+                'users': Users.amount(),
+                'asks': Asks.amount(),
+                'deals': Deals.amount(),
             }))
 
         # USERS
