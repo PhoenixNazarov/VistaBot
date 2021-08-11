@@ -10,6 +10,7 @@ import sqlite3 as sq
 class Sql:
     # need for sqlite and database.json
     def SQL(self, sql):
+        print(sql)
         path = 'base/database.db'
         with sq.connect(path) as con:
             cur = con.cursor()
@@ -602,7 +603,7 @@ class Asks(Sql):
 
         sql = f"""INSERT INTO Asks (idOwner, type, haveCurrency, haveCount, getCurrency, rate, rateShow, vistaCard, cards, banks, incompleteMinimal, timeUpdate) 
         VALUES ({ask.trade_id_owner}, '{ask.type}', '{ask.have_currency}', {ask.have_currency_count}, '{ask.get_currency}',
-                    {ask.rate}, {ask.show_rate}, {ask.vst_card}, {f"'{ask.fiat_cards}'" if ask.fiat_cards else 'null'}, {f"'{ask.fiat_banks}'" if ask.fiat_banks else 'null'},
+                    {ask.rate}, {ask.show_rate}, {ask.vst_card}, {f"'{ask.fiat_cards}'" if ask.fiat_cards else 'null'}, {f"'{json.dumps(ask.fiat_banks)}'" if ask.fiat_banks else 'null'},
                             {f"'{ask.min_incomplete}'" if ask.min_incomplete else 'null'}, {int(time.time())})"""
         self.SQL(sql)
 
@@ -710,8 +711,14 @@ class Ask(Sql):
         self.rating = data[0][1]
 
         # optional
-        self.fiat_cards = json.loads(config[9])
-        self.fiat_banks = config[10]
+        if config[9]:
+            self.fiat_cards = json.loads(config[9])
+        else:
+            self.fiat_cards = None
+        if config[10]:
+            self.fiat_banks = json.loads(config[10])
+        else:
+            self.fiat_banks = None
 
         # incomplete
         self.min_incomplete = config[11]
@@ -734,6 +741,11 @@ class Ask(Sql):
                 'rate': f'({self.show_rate}) {self.rate} '
             }
 
+        if self.fiat_cards:
+            fiat_cards = [self._getCard(i).collect_full('web') for i in self.fiat_cards]
+        else:
+            fiat_cards = None
+
         return {
             'id': self.id,
             'status': self.status,
@@ -745,7 +757,7 @@ class Ask(Sql):
             'show_rate': self.show_rate,
             'rate': self.rate,
             'vst_card': self._getCard(self.vst_card).collect_full('web'),
-            'fiat_cards': [self._getCard(i).collect_full('web') for i in self.fiat_cards],
+            'fiat_cards': fiat_cards,
             'fiat_banks': self.fiat_banks,
             'time_zone': self.time_zone,
             'rating': self.rating,
@@ -799,7 +811,6 @@ class Ask(Sql):
             stingBanks = '\n-'.join(set([self._getCard(i).bank.lower() for i in self.fiat_cards]))
             stringGive = f'{self.count("have", withCommission = True)} VST {self.have_currency.upper()}'
             stringGet = f'{self.count("get", withCommission = True)} {self.get_currency.upper()}'
-
         else:
             if self.fiat_banks == ['everyone']:
                 stingBanks = 'Любой'
@@ -827,6 +838,9 @@ class Ask(Sql):
                    f'Часовой пояс: <b>{self.time_zone}</b>' \
                    f'{stringIncomplete}'
         else:
+            if self.type == 'vst':
+                stringGive = f'{self.count("have")} VST {self.have_currency.upper()}'
+
             return f'{stingId}' \
                    f'Отдаете: <b>{stringGet}</b>\n' \
                    f'Получаете: <b>{stringGive}</b>\n' \

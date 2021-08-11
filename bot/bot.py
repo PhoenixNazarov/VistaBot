@@ -26,17 +26,17 @@ class Bot:
 
         @self.bot.message_handler(content_types = ['text'])
         def message_oper(message):
-            # try:
+            try:
                 self.__message(message)
-            # except:
-            #     pass
+            except:
+                pass
 
         @self.bot.callback_query_handler(func = lambda call: True)
         def query_oper(call):
-            # try:
+            try:
                 self.__query(call)
-            # except:
-            #     pass
+            except:
+                pass
 
         self.bot.polling(none_stop = True, interval = 0)
 
