@@ -951,10 +951,14 @@ class Deals(Sql):
         if active == 'end':
             additional += f' and status = "end"'
         if date:
-            additional += f' and {date[0] if date[0] != "" else 0} <= updateTime{" <= "+str(date[1]) if date[1] != "" else ""}' \
-                          f' ORDER BY updateTime'
+            if date[0] != '':
+                additional += f' and {date[0]} <= updateTime'
+            if date[1] != '':
+                additional += f' and {date[1]} >= updateTime'
+            additional += f' ORDER BY updateTime'
 
         sql = f"""SELECT * from Deals {additional}"""
+        print(sql)
         deals = [Deal(i) for i in self.SQL(sql)]
 
         if preview == 'web':
@@ -976,7 +980,7 @@ class Deals(Sql):
         return Deal(self.SQL(sql)[0])
 
     def amount(self):
-        sql = "SELECT count(id) from Deals where status != 'end'"
+        sql = "SELECT count(id) from Deals where (status != 'end' and status != 'remove')"
         return int(self.SQL(sql)[0][0])
 
 
