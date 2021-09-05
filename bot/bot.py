@@ -10,6 +10,9 @@ Users = Users()
 Deals = Deals()
 ReferralWithdrawal = ReferralWithdrawal()
 
+import config
+debug = config.debug
+
 
 class Bot:
     def __init__(self, config):
@@ -26,17 +29,23 @@ class Bot:
 
         @self.bot.message_handler(content_types = ['text'])
         def message_oper(message):
-            try:
+            if debug:
                 self.__message(message)
-            except:
-                pass
+            else:
+                try:
+                    self.__message(message)
+                except:
+                    pass
 
         @self.bot.callback_query_handler(func = lambda call: True)
         def query_oper(call):
-            try:
+            if debug:
                 self.__query(call)
-            except:
-                pass
+            else:
+                try:
+                    self.__query(call)
+                except:
+                    pass
 
         self.bot.polling(none_stop = True, interval = 0)
 
@@ -365,14 +374,14 @@ class Bot:
             elif call.data.endswith('cardsu'):
                 if user.vusd > services.referral_withdrawal_usd:
                     num = int(call.data.split('_')[1])
-                    ReferralWithdrawal.add(user, num, 'vusd')
+                    ReferralWithdrawal.add(user, user.getCards(currency = 'vusd')[num].id, 'vusd')
                     self.edit_screen(user, screens.user_info('card_choose', user), call.message.id)
                 else:
                     self.send_screen(user, screens.user_info('low_money', user))
             elif call.data.endswith('cardse'):
                 if user.veur > services.referral_withdrawal_eur:
                     num = int(call.data.split('_')[1])
-                    ReferralWithdrawal.add(user, num, 'veur')
+                    ReferralWithdrawal.add(user, user.getCards(currency = 'veur')[num].id, 'veur')
                     self.edit_screen(user, screens.user_info('card_choose', user), call.message.id)
                 else:
                     self.send_screen(user, screens.user_info('low_money', user))

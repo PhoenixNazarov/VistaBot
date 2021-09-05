@@ -145,7 +145,8 @@ $(document).ready(function(){
                 data=JSON.parse(data);
 
                 for (let i = 0; i < data.length; i++) {
-                    let id = data[i][0];
+                    let ask_id = data[i][0];
+                    let id = data[i][5];
                     let desr = data[i][1];
                     let status = data[i][2];
                     let moderate = data[i][3];
@@ -165,7 +166,7 @@ $(document).ready(function(){
                         cancel = '<p2 class="bg-danger">Да</p2>';
                     }
 
-                    let a_url = '<a href="deals.html?'+id+'">'+id+'</a>'
+                    let a_url = '<a href="deals.html?'+id+'">'+ask_id+'</a>'
 
                     $("#dataTables-deals").append('<tr class="gradeA odd "><td class="center">' + a_url + '</td><td>' + desr + '</td><td>' + status + '</td><td>' + moderate + '</td><td>' + cancel + '</td></tr>');
                 }

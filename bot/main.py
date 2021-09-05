@@ -15,6 +15,7 @@ class Config:
         self.Admin_panel = admin_panel.Admin_panel(self)
 
     def initiate(self):
+        time.sleep(5)
         threading.Thread(target = self.Rates.updater).start()
         print('Rates has started')
         time.sleep(0.5)

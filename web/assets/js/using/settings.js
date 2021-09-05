@@ -10,6 +10,7 @@ function bind_save(button){
                 "perc_fiat": $('#perc_fiat').val(),
                 "card_usd": $('#card_vst_usd').val(),
                 "card_eur": $('#card_vst_eur').val(),
+                'moderateAsk': $('input[name=moderateAsk]:checked').val(),
                 "faq": JSON.stringify(save_faqs())
             },
             onAjaxSuccess);
@@ -80,6 +81,14 @@ $(document).ready(function(){
                 $('#perc_fiat').val(data.perc_fiat);
                 $('#card_vst_usd').val(data.card_usd);
                 $('#card_vst_eur').val(data.card_eur);
+
+                if (data.moderateAsk === 'On'){
+                    $('#moderateAskOn').prop('checked', true);
+                }
+                else{
+                    $('#moderateAskOff').prop('checked', true);
+                }
+
                 get_faqs(data.faq);
             }
     }

@@ -1,15 +1,16 @@
 import datetime
 from flask import Flask, request, Response
 import json
+import time
 
 import screens
-
-from classes import Asks, Users, Data, Deals, ReferralWithdrawal
+from classes import Asks, Users, Data, Deals, ReferralWithdrawal, AdminNotifications
 Asks = Asks()
 Users = Users()
 Data = Data()
 Deals = Deals()
 ReferralWithdrawal = ReferralWithdrawal()
+AdminNotifications = AdminNotifications()
 
 
 class Admin_panel:
@@ -215,6 +216,7 @@ class Admin_panel:
             Data.faq = json.loads(request.form['faq'])
             Data.card_usd = request.form['card_usd']
             Data.card_eur = request.form['card_eur']
+            Data.moderateAsk = request.form['moderateAsk']
 
             return Response(json.dumps({'ok': 1}))
 
@@ -245,6 +247,44 @@ class Admin_panel:
                 date2 = datetime.datetime.strptime(date2, '%d.%m.%Y %H:%M').timestamp()
             print(date1, date2)
             return Response(json.dumps(Deals.getDeals(preview = 'end', idOwner = idOwner, active = 'end', date = (date1, date2))))
+
+        # DISPLAY
+        @self.app.route("/display", methods = ['POST'])
+        def display():
+            tm = int(float(request.form['time']))
+            acceptAsks = request.form['acceptAsks'] == 'true'
+            dealGetVista = request.form['dealGetVista'] == 'true'
+            dealSendVista = request.form['dealSendVista'] == 'true'
+            referralWithdrawals = request.form['referralWithdrawals'] == 'true'
+
+            currentTime = int(time.time())
+            while currentTime == int(time.time()):
+                time.sleep(0.1)
+
+            for i in range(10):
+                notifications = AdminNotifications.get(tm,acceptAsks,
+                                                        dealGetVista,
+                                                        dealSendVista,
+                                                        referralWithdrawals,)
+
+                if len(notifications) > 0:
+                    return Response(json.dumps(notifications))
+
+                time.sleep(0.5)
+
+            return Response('notFound')
+
+        @self.app.route("/display_analyze", methods = ['POST'])
+        def display_analyze():
+            dealCancel = request.form['dealCancel'] == 'true'
+            dealModerate = request.form['dealModerate'] == 'true'
+            askTimeOver = request.form['askTimeOver'] == 'true'
+            dealUserTimeOver = request.form['dealUserTimeOver'] == 'true'
+            dealTimeOver = request.form['dealTimeOver'] == 'true'
+
+            return Response(json.dumps(AdminNotifications.getAnalyze(dealCancel, dealModerate, askTimeOver,
+                                                                     dealUserTimeOver, dealTimeOver)))
+
 
         @self.app.after_request
         def after_request(response):

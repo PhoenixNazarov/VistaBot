@@ -57,6 +57,9 @@
                     <li>
                         <a href="referralwithdrawal.html"><i class="fa fa-tasks"></i> Реферальные выводы</a>
                     </li>
+                    <li>
+                        <a href="display.html"><i class="fa fa-desktop"></i> Дисплей задач</a>
+                    </li>
                 </ul>
 
             </div>
@@ -97,6 +100,8 @@
 
                                     </div>
                                 </div>
+                                <div class="row">
+                                    <div class="col-md-12">
                                     <p class="text-center"><b>VST карты гаранта</b></p>
                                     <div class="form-group row">
                                         <label for="perc_vst" class="col-sm-1 col-form-label">Vst $</label>
@@ -110,7 +115,24 @@
                                             <textarea id="card_vst_eur" class="form-control" rows="3"></textarea>
                                         </div>
                                     </div>
-                                    <div class="row">
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label>Модерация заявок</label>
+                                            <label class="radio-inline">
+                                                <input type="radio" name="moderateAsk" id="moderateAskOn" value="On">Включено
+                                            </label>
+                                            <label class="radio-inline">
+                                                <input type="radio" name="moderateAsk" id="moderateAskOff" value="Off">Отключено
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
                                     <div class="col-md-12">
                                         <p class="text-center"><b>faq</b></p>
                                         <table class="table" id ='faq_table'>
@@ -128,7 +150,6 @@
                                             <button id="faq_add" type="button" class="btn btn-primary">+</button>
                                         </div>
                                     </div>
-
                                 </div>
                             </div>
                         </div>

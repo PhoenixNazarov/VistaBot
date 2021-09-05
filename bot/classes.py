@@ -10,7 +10,6 @@ import sqlite3 as sq
 class Sql:
     # need for sqlite and database.json
     def SQL(self, sql):
-        print(sql)
         path = 'base/database.db'
         with sq.connect(path) as con:
             cur = con.cursor()
@@ -28,7 +27,7 @@ class Sql:
         if name:
             additional += f' and name = "{name}"'
         if active:
-            additional += f' and timeDelete = null'
+            additional += f' and timeDelete is null'
 
         sql = f"""SELECT * FROM Cards {additional}"""
         return Card(self.SQL(sql)[0])
@@ -73,7 +72,7 @@ class Data:
         self.pathSettings = 'base/settings.json'
 
     def __getattr__(self, item):
-        if item in ['perc_fiat', 'perc_vst', 'card_usd', 'card_eur']:
+        if item in ['perc_fiat', 'perc_vst', 'card_usd', 'card_eur', 'moderateAsk']:
             with open(self.pathSettings, 'r') as file:
                 return json.loads(file.read())[item]
 
@@ -85,7 +84,7 @@ class Data:
             return super().__getattr__(item)
 
     def __setattr__(self, key, value):
-        if key in ['perc_fiat', 'perc_vst', 'card_usd', 'card_eur']:
+        if key in ['perc_fiat', 'perc_vst', 'card_usd', 'card_eur', 'moderateAsk']:
             with open(self.pathSettings, 'r') as file:
                 data = json.loads(file.read())
             data[key] = value
@@ -109,13 +108,15 @@ class Data:
             perc_vst = _base['perc_vst']
             card_usd = _base['card_usd']
             card_eur = _base['card_eur']
+            moderateAsk = _base['moderateAsk']
 
         return {
             'perc_vst': perc_vst,
             'perc_fiat': perc_fiat,
             'faq': faq,
             'card_usd': card_usd,
-            'card_eur': card_eur
+            'card_eur': card_eur,
+            'moderateAsk': moderateAsk
         }
 
 
@@ -277,8 +278,8 @@ class User(Sql):
         # referral
         self.referral = config[13]
 
-        self.veur = config[14]
-        self.vusd = config[15]
+        self.veur = round(config[14], 2)
+        self.vusd = round(config[15], 2)
 
     def __setattr__(self, key, value):
         databaseKeys = {'first_name': 'firstName',
@@ -605,8 +606,10 @@ class Asks(Sql):
         else:
             ask = oldAsk
 
-        sql = f"""INSERT INTO Asks (idOwner, type, haveCurrency, haveCount, getCurrency, rate, rateShow, vistaCard, cards, banks, incompleteMinimal, timeUpdate) 
-        VALUES ({ask.trade_id_owner}, '{ask.type}', '{ask.have_currency}', {ask.have_currency_count}, '{ask.get_currency}',
+        moderateAsk = Data().moderateAsk
+
+        sql = f"""INSERT INTO Asks (idOwner {', status' if moderateAsk=='Off' else ''}, type, haveCurrency, haveCount, getCurrency, rate, rateShow, vistaCard, cards, banks, incompleteMinimal, timeUpdate) 
+        VALUES ({ask.trade_id_owner}, {'"ok", ' if moderateAsk=='Off' else ''} '{ask.type}', '{ask.have_currency}', {ask.have_currency_count}, '{ask.get_currency}',
                     {ask.rate}, {ask.show_rate}, {ask.vst_card}, {f"'{ask.fiat_cards}'" if ask.fiat_cards else 'null'}, {f"'{json.dumps(ask.fiat_banks)}'" if ask.fiat_banks else 'null'},
                             {f"'{ask.min_incomplete}'" if ask.min_incomplete else 'null'}, {int(time.time())})"""
         self.SQL(sql)
@@ -644,9 +647,12 @@ class Asks(Sql):
         sql = f"""SELECT * from Asks {additional}"""
 
         asks = [Ask(i) for i in self.SQL(sql)]
-
         if preview == 'web':
-            return [[i.id, i.trade_id_owner, i.button_text(), i.status] for i in asks]
+            rask = []
+            for i in asks:
+                if i.status not in ['deal', 'removed']:
+                    rask.append([i.id, i.trade_id_owner, i.button_text(), i.status])
+            return rask
         else:
             return asks
 
@@ -781,7 +787,7 @@ class Ask(Sql):
                 else:
                     return round(self.have_currency_count * (self.Data.perc_fiat / 100), 2)
             elif withCommission:
-                return self.count('have') + self.count('have', commission = True)
+                return round(self.count('have') + self.count('have', commission = True), 2)
             else:
                 return round(self.have_currency_count, 2)
         else:
@@ -791,7 +797,7 @@ class Ask(Sql):
                 else:
                     return round(self.count('get') * (self.Data.perc_fiat / 100), 2)
             elif withCommission:
-                return self.count('get') + self.count('get', commission = True)
+                return round(self.count('get') + self.count('get', commission = True), 2)
             else:
                 return round(self.have_currency_count * self.rate, 2)
 
@@ -820,8 +826,8 @@ class Ask(Sql):
                 stingBanks = 'Любой'
             else:
                 stingBanks = '\n-'.join(self.fiat_banks)
-            stringGive = f'{self.count("have", withCommission = True)} VST {self.have_currency.upper()}'
-            stringGet = f'{self.count("get")} {self.get_currency.upper()}'
+            stringGive = f'{self.count("have", withCommission = True)} {self.have_currency.upper()}'
+            stringGet = f'{self.count("get")} VST {self.get_currency.upper()}'
 
         stingId = ''
         stringIncomplete = ''
@@ -844,6 +850,8 @@ class Ask(Sql):
         else:
             if self.type == 'vst':
                 stringGive = f'{self.count("have")} VST {self.have_currency.upper()}'
+            else:
+                stringGet = f'{self.count("get", withCommission = True)} VST {self.get_currency.upper()}'
 
             return f'{stingId}' \
                    f'Отдаете: <b>{stringGet}</b>\n' \
@@ -901,7 +909,7 @@ class Deals(Sql):
             cards = []
             for i in user.pop_data['d_cards_name']:
                 if user.pop_data['d_cards_name'][i]:
-                    cards.append(self._getCard(idOwner = user.tg_id, name = i, active = 1))
+                    cards.append(self._getCard(idOwner = user.trade_id, name = i, active = 1).id)
             if len(cards) == 0:
                 return
 
@@ -911,7 +919,7 @@ class Deals(Sql):
 
             b_idTelegram = self._getUser(tradeId = ask.trade_id_owner).tg_id
             b_vistaCard = ask.vst_card
-            b_banks = ask.fiat_banks
+            b_banks = json.dumps(ask.fiat_banks)
 
             vistaCurrency = 'VST ' + ask.get_currency.upper()
             vistaCount = ask.count('get')
@@ -943,14 +951,14 @@ class Deals(Sql):
         if active == 'end':
             additional += f' and status = "end"'
         if date:
-            additional += f' and {date[0] if date[0] != "" else 0} <= updateTime{" <= "+date[1] if date[1] != "" else ""}' \
+            additional += f' and {date[0] if date[0] != "" else 0} <= updateTime{" <= "+str(date[1]) if date[1] != "" else ""}' \
                           f' ORDER BY updateTime'
 
         sql = f"""SELECT * from Deals {additional}"""
         deals = [Deal(i) for i in self.SQL(sql)]
 
         if preview == 'web':
-            return [[i.id, i.previewText('web'), i.status, i.moderate, i.cancel] for i in deals]
+            return [[i.ask_id, i.previewText('web'), i.status, i.moderate, i.cancel, i.id] for i in deals]
         elif preview == 'end':
             return [[self._getUser(telegramId = i.vista_people).trade_id,
                      self._getUser(telegramId = i.fiat_people).trade_id,
@@ -970,6 +978,7 @@ class Deals(Sql):
     def amount(self):
         sql = "SELECT count(id) from Deals where status != 'end'"
         return int(self.SQL(sql)[0][0])
+
 
 class Deal(Sql):
     def __init__(self, config):
@@ -1018,7 +1027,9 @@ class Deal(Sql):
         database = {
             'fiat_choose_card': 'b_chooseCard',
             'vista_send_over': 'a_timeOver',
-            'fiat_send_over': 'b_timeOver'}
+            'fiat_send_over': 'b_timeOver',
+            'cancel': 'cancel',
+            'moderate': 'moderate'}
 
         if key in database and key in self.__dict__:
             sql = f"""UPDATE Deals SET {database[key]} = '{value}' where id={self.id}"""
@@ -1048,7 +1059,7 @@ class Deal(Sql):
 
     def previewText(self, type='button'):
         if type == 'button':
-            return f'№{self.id} {self.vista_count + self.vista_commission} {self.vista_currency} ⇒ {self.fiat_count} {self.fiat_currency}'
+            return f'№{self.ask_id} {self.vista_count + self.vista_commission} {self.vista_currency} ⇒ {self.fiat_count} {self.fiat_currency}'
         elif type == 'web':
             return f'{self.vista_count + self.vista_commission} VST {self.vista_currency} ⇒ {self.fiat_count} {self.fiat_currency} {self.rate}'
 
@@ -1224,10 +1235,17 @@ class Deal(Sql):
         # create ask
         ask = self._getAsk(self.ask_id)
         if ask.min_incomplete:
-            remains = ask.count('have') - self.vista_count
+            if ask.type == 'vst':
+                remains = ask.count('have') - self.vista_count
+            else:
+                remains = ask.count('have') - self.fiat_count
+
             if remains < ask.min_incomplete:
                 ask = None
-            ask.have_currency_count = remains
+            else:
+                ask.have_currency_count = remains
+        else:
+            ask = None
 
         return referralMessage, ask
 
@@ -1256,4 +1274,80 @@ class ReferralWithdrawal(Sql):
 
     def getWait(self):
         sql = """SELECT * from ReferralWithdrawals where status = 'wait'"""
-        return self.SQL(sql)
+        return [[i[0], i[1], i[2], self._getCard(id = i[3]).collect_full('web'), i[4]] for i in self.SQL(sql)]
+
+
+class AdminNotifications(Sql):
+    def get(self, time, acceptAsks, dealGetVista, dealSendVista, referralWithdrawals):
+        notifications = []
+
+        if acceptAsks:
+            sql = f"SELECT * from Asks where status = 'wait_allow' and timeUpdate > {time}"
+            asks = [Ask(i) for i in self.SQL(sql)]
+            for ask in asks:
+                notifications.append(['ask_allow', ask.id, ask.button_text()])
+
+        if dealGetVista:
+            sql = f"SELECT * from Deals where status = 'wait_vst_proof' and updateTime > {time}"
+            deals = [Deal(i) for i in self.SQL(sql)]
+            for deal in deals:
+                notifications.append(['deal_getVista', deal.id, deal.ask_id,
+                                      self._getCard(id=deal.vista_people_vst_card).collect_full('web'),
+                                      round(deal.vista_count + deal.vista_commission,2), deal.vista_currency])
+
+        if dealSendVista:
+            sql = f"SELECT * from Deals where status = 'wait_garant_vst' and updateTime > {time}"
+            deals = [Deal(i) for i in self.SQL(sql)]
+            for deal in deals:
+                notifications.append(['deal_sendVista', deal.id, deal.ask_id,
+                                      self._getCard(id=deal.fiat_people_vst_card).collect_full('web'),
+                                      round(deal.vista_count,2), deal.vista_currency])
+
+        if referralWithdrawals:
+            sql = f"""SELECT * from ReferralWithdrawals where status = 'wait' and timeUpdate > {time}"""
+            for i in self.SQL(sql):
+                notifications.append(['referralWithdrawal', i[0], i[1], i[2], self._getCard(id = i[3]).collect_full('web'), i[4]])
+
+        # if dealCancel:
+        #     sql = f"SELECT * from Deals where status = 'cancel' and updateTime > {time}"
+        #     deals = [Deal(i) for i in self.SQL(sql)]
+        #     for deal in deals:
+        #         notifications.append(['deal_sendVista', deal.id, deal.previewText('web')])
+
+
+        return notifications
+
+    def getAnalyze(self, dealCancel, dealModerate, askTimeOver, dealUserTimeOver, dealTimeOver):
+        notifications = []
+
+        if dealCancel:
+            sql = f"""SELECT * from Deals where Deals.cancel == 1 and (status != 'end' and status != 'remove')"""
+            deals = [Deal(i) for i in self.SQL(sql)]
+            for deal in deals:
+                notifications.append(['dealCancel', deal.id, deal.ask_id])
+
+        if dealModerate:
+            sql = f"""SELECT * from Deals where moderate != 0 and (status != 'end' and status != 'remove')"""
+            deals = [Deal(i) for i in self.SQL(sql)]
+            for deal in deals:
+                notifications.append(['dealModerate', deal.id, deal.ask_id])
+
+        if dealUserTimeOver:
+            sql = f"""SELECT * from Deals where ((a_timeOver < {int(time.time())} and a_timeOver != 0) or (b_timeOver < {int(time.time())} and b_timeOver != 0)) and (status != 'end' and status != 'remove')"""
+            deals = [Deal(i) for i in self.SQL(sql)]
+            for deal in deals:
+                notifications.append(['dealUserTimeOver', deal.id, deal.ask_id])
+
+        if dealTimeOver:
+            sql = f"""SELECT * from Deals where updateTime < {int(time.time()) - 12*60*60} and (status != 'end' and status != 'remove')"""
+            deals = [Deal(i) for i in self.SQL(sql)]
+            for deal in deals:
+                notifications.append(['dealOver', deal.id, deal.ask_id])
+
+        if askTimeOver:
+            sql = f"""SELECT * from Asks where timeUpdate < {int(time.time()) - 3*24*60*60} and status = 'ok'"""
+            asks = [Ask(i) for i in self.SQL(sql)]
+            for ask in asks:
+                notifications.append(['askOver', ask.id])
+
+        return notifications

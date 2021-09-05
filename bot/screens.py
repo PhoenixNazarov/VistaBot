@@ -4,12 +4,12 @@ import telebot
 import json
 import services
 
-from classes import Asks, Users, Deals, ReferralWithdrawal
+from classes import Asks, Users, Deals, ReferralWithdrawal, Data
 Asks = Asks()
 Users = Users()
 Deals = Deals()
 ReferralWithdrawal = ReferralWithdrawal()
-
+Data = Data()
 
 def edit_mail(key):
     if key == 'main':
@@ -194,7 +194,7 @@ def card(key, user):
             button1 = telebot.types.InlineKeyboardButton(text = cards[i * 2][0],
                                                          callback_data = 'card_info_' + str(cards[i * 2][1]))
             button2 = telebot.types.InlineKeyboardButton(text = cards[i * 2 + 1][0],
-                                                         callback_data = 'card_info_' + str(cards[i * 2][1]))
+                                                         callback_data = 'card_info_' + str(cards[i * 2 + 1][1]))
             buttons.row(button1, button2)
         if len(cards) % 2 == 1:
             button1 = telebot.types.InlineKeyboardButton(text = cards[-1][0],
@@ -477,7 +477,10 @@ def create_asks(key, user, Rates=None, Ask=None):
         buttons.row(button1, button2)
 
     elif key == 'public':
-        text = f'<b>Ваша заявка №{Ask.id}</b> передана на рассмотрение'
+        if Data.moderateAsk == 'On':
+            text = f'<b>Ваша заявка №{Ask.id}</b> передана на рассмотрение'
+        else:
+            text = f'<b>Ваша заявка №{Ask.id}</b> опубликована'
 
     elif key == 'not_public':
         text = 'Заявка не опубликована'
@@ -736,16 +739,16 @@ def deal(key, Deal, optional=None):
     helpButtons = True
 
     # wait_vst
-    text = f'Сделка <b>№{Deal.id}!</b>\n\n'
+    text = f'Сделка <b>№{Deal.ask_id}!</b>\n\n'
     if key == '1_A':
         text = f'ПОЗДРАВЛЯЕМ!' \
-               f'\nМы нашли Вам покупателя на Вашу заявку №{Deal.id}! Для этого Вам необходимо перевести со своего счета VISTA на счет гаранта по следующим реквизитам:' \
+               f'\nМы нашли Вам покупателя на Вашу заявку №{Deal.ask_id}! Для этого Вам необходимо перевести со своего счета VISTA на счет гаранта по следующим реквизитам:' \
                f'\n{Deal.garant_card()}' \
-               f'\nСумма перевода (с учетом комиссии сервиса): <b>{Deal.vista_count + Deal.vista_commission} Vista {Deal.vista_currency.upper()}</b>' \
+               f'\nСумма перевода (с учетом комиссии сервиса): <b>{round(Deal.vista_count + Deal.vista_commission,2)} Vista {Deal.vista_currency.upper()}</b>' \
                f'\nКурс обмена: {Deal.show_rate}' \
-               f'\n⚠️ Назначение перевода: <code>Заявка {Deal.id}</code> ⚠️' \
+               f'\n⚠️ Назначение перевода: <code>Заявка {Deal.ask_id}</code> ⚠️' \
                f'\nВНИМАНИЕ!' \
-               f'\nОбязательно указывайте правильно назначение перевода "Заявка №{Deal.id}", в противном случае Ваш перевод будет обработан в последнюю очередь!' \
+               f'\nОбязательно указывайте правильно назначение перевода "Заявка №{Deal.ask_id}", в противном случае Ваш перевод будет обработан в последнюю очередь!' \
                f''
         # text += f'⚠️ <b>ВНИМАНИЕ!</b> ⚠️' \
         #         f'\nОбязательно указывайте правильное назначение перевода.\n' \
@@ -864,7 +867,6 @@ def deal(key, Deal, optional=None):
 
     elif key == '6_A':
         text += 'Вы подтвердили перевод фиантной валюты, Спасибо за участие в сделке'
-        return None
     elif key == '6_B':
         text += 'Спасибо за участие в сделке, администратор отправил вам VST' \
                 f'\nВаш рейтинг надежности клиента вскоре будет повышен на 1 балл' \
@@ -880,6 +882,7 @@ def deal(key, Deal, optional=None):
         buttons.row(button1, button2)
     elif key == 'cancel_accept':
         text += 'Заявка отменена, ожидайте отмены администратора'
+        helpButtons = False
 
     elif key == 'moder':
         text += 'Вы уверены, что что-то произошло не так и хотите чтобы с вами связался модератор?'
@@ -891,8 +894,11 @@ def deal(key, Deal, optional=None):
         buttons.row(button1, button2)
     elif key == 'moder_accept':
         text += 'Заявка поставлена на паузу, ожидайте, когда вам напишет модератор'
+        helpButtons = False
 
-    if buttons and helpButtons:
+    if helpButtons:
+        if buttons is None:
+            buttons = telebot.types.InlineKeyboardMarkup()
         button1 = telebot.types.InlineKeyboardButton(text = 'Отменить', callback_data = f'deal_{Deal.id}_cancel')
         button2 = telebot.types.InlineKeyboardButton(text = 'Помощь модерации', callback_data = f'deal_{Deal.id}_moder')
         buttons.row(button1, button2)
