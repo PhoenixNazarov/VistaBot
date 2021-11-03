@@ -39,15 +39,12 @@ async function notif(){
 
 first = 1;
 time_end = -1;
+ctime = 0;
 
 function getControlNotifications(){
-    if (first === 1){
-        time = 0;
-    }
-
     $.post(url+"display",
         {
-            'time': time,
+            'time': ctime,
             'acceptAsks': acceptAsks,
             'dealGetVista': dealGetVista,
             'dealSendVista': dealSendVista,
@@ -55,21 +52,15 @@ function getControlNotifications(){
         },
         onAjaxSuccess);
         function onAjaxSuccess(data){
-            if (data !== 'notFound'){
-                pasteControlNotifications(JSON.parse(data))
+            data = JSON.parse(data);
+            if (data.notifications !== 'notFound'){
+                pasteControlNotifications(data.notifications)
                 if (first === 1){first = 0}
                 else{
                     notif();
                 }
             }
-
-            let now_time = div(Date.now(), 1000);
-            if (now_time === time){
-                time = now_time+1;
-            }
-            else{
-                time = now_time;
-            }
+            ctime = data.time;
             getControlNotifications();
         }
 }

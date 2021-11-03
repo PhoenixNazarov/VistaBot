@@ -10,6 +10,7 @@ import sqlite3 as sq
 class Sql:
     # need for sqlite and database.json
     def SQL(self, sql):
+        print(sql)
         path = 'base/database.db'
         with sq.connect(path) as con:
             cur = con.cursor()
@@ -501,7 +502,7 @@ class Card(Sql):
         self.id = config[0]
         self.create_type = config[2]
         self.name = config[3]
-        self.currency = config[4]
+        self.currency = config[4].upper()
 
         self.data1 = config[5]
         self.data2 = config[6]
@@ -546,7 +547,7 @@ class Card(Sql):
         else:
             text = f'{self.name}, BYN\n' \
                    f'{self.data1}, {self.data2}\n' \
-                   f'{self.data4}\n' \
+                   f'{self.data5}\n' \
                    f'{self.data3}, {self.data4}'
 
         if show == 'tg':
@@ -942,14 +943,14 @@ class Deals(Sql):
         return self.getDeals()[-1]
 
     def getDeals(self, preview=None, idOwner=None, active=None, date=None):
-        additional = 'where 1'
+        additional = 'where 1 '
         if idOwner:
             telegramId = self._getUser(tradeId = idOwner).tg_id
             additional += f' and (a_idTelegram={telegramId} or b_idTelegram={telegramId})'
         if active == 'work':
-            additional += f' and status not in ("end", "remove")'
+            additional += f'and status not in ("end", "remove")'
         if active == 'end':
-            additional += f' and status = "end"'
+            additional += f'and status = "end"'
         if date:
             if date[0] != '':
                 additional += f' and {date[0]} <= updateTime'
@@ -958,7 +959,6 @@ class Deals(Sql):
             additional += f' ORDER BY updateTime'
 
         sql = f"""SELECT * from Deals {additional}"""
-        print(sql)
         deals = [Deal(i) for i in self.SQL(sql)]
 
         if preview == 'web':
@@ -1217,16 +1217,20 @@ class Deal(Sql):
             commissionCurrency = 'Vista USD'
             if referral_A:
                 referral_A.vusd += referralCommission
-            if referral_B:
-                referral_B.vusd += referralCommission
-        else:
-            commissionCurrency = 'Vista EUR'
-            if referral_A:
-                referral_A.vusd += referralCommission
                 sql = f"""UPDATE Deals SET referralA={referral_A.trade_id}, referralACount={referralCommission} where id = {self.id}"""
                 self.SQL(sql)
             if referral_B:
                 referral_B.vusd += referralCommission
+                sql = f"""UPDATE Deals SET referralB={referral_B.trade_id}, referralBCount={referralCommission} where id = {self.id}"""
+                self.SQL(sql)
+        else:
+            commissionCurrency = 'Vista EUR'
+            if referral_A:
+                referral_A.veur += referralCommission
+                sql = f"""UPDATE Deals SET referralA={referral_A.trade_id}, referralACount={referralCommission} where id = {self.id}"""
+                self.SQL(sql)
+            if referral_B:
+                referral_B.veur += referralCommission
                 sql = f"""UPDATE Deals SET referralB={referral_B.trade_id}, referralBCount={referralCommission} where id = {self.id}"""
                 self.SQL(sql)
         referralMessage={
@@ -1285,14 +1289,19 @@ class AdminNotifications(Sql):
     def get(self, time, acceptAsks, dealGetVista, dealSendVista, referralWithdrawals):
         notifications = []
 
+        if type(time) == list:
+            addTime = f'<= {time[0]}'
+        else:
+            addTime = f'= {time}'
+
         if acceptAsks:
-            sql = f"SELECT * from Asks where status = 'wait_allow' and timeUpdate > {time}"
+            sql = f"SELECT * from Asks where status = 'wait_allow' and timeUpdate {addTime}"
             asks = [Ask(i) for i in self.SQL(sql)]
             for ask in asks:
                 notifications.append(['ask_allow', ask.id, ask.button_text()])
 
         if dealGetVista:
-            sql = f"SELECT * from Deals where status = 'wait_vst_proof' and updateTime > {time}"
+            sql = f"SELECT * from Deals where status = 'wait_vst_proof' and updateTime {addTime}"
             deals = [Deal(i) for i in self.SQL(sql)]
             for deal in deals:
                 notifications.append(['deal_getVista', deal.id, deal.ask_id,
@@ -1300,7 +1309,7 @@ class AdminNotifications(Sql):
                                       round(deal.vista_count + deal.vista_commission,2), deal.vista_currency])
 
         if dealSendVista:
-            sql = f"SELECT * from Deals where status = 'wait_garant_vst' and updateTime > {time}"
+            sql = f"SELECT * from Deals where status = 'wait_garant_vst' and updateTime {addTime}"
             deals = [Deal(i) for i in self.SQL(sql)]
             for deal in deals:
                 notifications.append(['deal_sendVista', deal.id, deal.ask_id,
@@ -1308,7 +1317,7 @@ class AdminNotifications(Sql):
                                       round(deal.vista_count,2), deal.vista_currency])
 
         if referralWithdrawals:
-            sql = f"""SELECT * from ReferralWithdrawals where status = 'wait' and timeUpdate > {time}"""
+            sql = f"""SELECT * from ReferralWithdrawals where status = 'wait' and timeUpdate {addTime}"""
             for i in self.SQL(sql):
                 notifications.append(['referralWithdrawal', i[0], i[1], i[2], self._getCard(id = i[3]).collect_full('web'), i[4]])
 

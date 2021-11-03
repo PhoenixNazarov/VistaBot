@@ -5,6 +5,7 @@ import time
 
 import screens
 from classes import Asks, Users, Data, Deals, ReferralWithdrawal, AdminNotifications
+
 Asks = Asks()
 Users = Users()
 Data = Data()
@@ -98,7 +99,7 @@ class Admin_panel:
         # ASKS
         @self.app.route("/get_asks", methods = ['POST'])
         def get_asks():
-            return Response(json.dumps(Asks.getAsks(preview='web')))
+            return Response(json.dumps(Asks.getAsks(preview = 'web')))
 
         @self.app.route("/get_ask", methods = ['POST'])
         def get_ask():
@@ -167,9 +168,13 @@ class Admin_panel:
             self.Bot.notification_deal_users(Deal)
             referralMessage, newAsk = Deal.end()
             if referralMessage['referral_A']:
-                self.Bot.send_screen(referralMessage['referral_A'], screens.referral('bonus', referralMessage['commission'], referralMessage['commissionCurrency']))
+                self.Bot.send_screen(referralMessage['referral_A'],
+                                     screens.referral('bonus', referralMessage['commission'],
+                                                      referralMessage['commissionCurrency']))
             if referralMessage['referral_B']:
-                self.Bot.send_screen(referralMessage['referral_B'], screens.referral('bonus', referralMessage['commission'], referralMessage['commissionCurrency']))
+                self.Bot.send_screen(referralMessage['referral_B'],
+                                     screens.referral('bonus', referralMessage['commission'],
+                                                      referralMessage['commissionCurrency']))
 
             if newAsk:
                 Asks.addAsk(oldAsk = newAsk)
@@ -246,7 +251,8 @@ class Admin_panel:
             if date2 != '':
                 date2 = datetime.datetime.strptime(date2, '%d.%m.%Y %H:%M').timestamp()
             print(date1, date2)
-            return Response(json.dumps(Deals.getDeals(preview = 'end', idOwner = idOwner, active = 'end', date = (date1, date2))))
+            return Response(
+                json.dumps(Deals.getDeals(preview = 'end', idOwner = idOwner, active = 'end', date = (date1, date2))))
 
         # DISPLAY
         @self.app.route("/display", methods = ['POST'])
@@ -257,22 +263,39 @@ class Admin_panel:
             dealSendVista = request.form['dealSendVista'] == 'true'
             referralWithdrawals = request.form['referralWithdrawals'] == 'true'
 
-            currentTime = int(time.time())
-            while currentTime == int(time.time()):
-                time.sleep(0.1)
+            ctime = int(time.time())
+            if tm == 0:
+                while ctime == int(time.time()):
+                    time.sleep(0.05)
 
-            for i in range(10):
-                notifications = AdminNotifications.get(tm,acceptAsks,
-                                                        dealGetVista,
-                                                        dealSendVista,
-                                                        referralWithdrawals,)
-
-                if len(notifications) > 0:
-                    return Response(json.dumps(notifications))
-
-                time.sleep(0.5)
-
-            return Response('notFound')
+                notifications = AdminNotifications.get([ctime], acceptAsks,
+                                                       dealGetVista,
+                                                       dealSendVista,
+                                                       referralWithdrawals)
+            else:
+                notifications = []
+                if tm < ctime:
+                    notifications = AdminNotifications.get([tm], acceptAsks,
+                                                           dealGetVista,
+                                                           dealSendVista,
+                                                           referralWithdrawals)
+                else:
+                    for i in range(5):
+                        while ctime == int(time.time()):
+                            time.sleep(0.05)
+                        notifications = AdminNotifications.get(ctime, acceptAsks,
+                                                               dealGetVista,
+                                                               dealSendVista,
+                                                               referralWithdrawals)
+                        if len(notifications) != 0:
+                            break
+                        ctime = int(time.time())
+            print(len(notifications))
+            notifications = {
+                'notifications': notifications if len(notifications) != 0 else 'notFound',
+                'time': ctime + 1
+            }
+            return Response(json.dumps(notifications))
 
         @self.app.route("/display_analyze", methods = ['POST'])
         def display_analyze():
@@ -284,7 +307,6 @@ class Admin_panel:
 
             return Response(json.dumps(AdminNotifications.getAnalyze(dealCancel, dealModerate, askTimeOver,
                                                                      dealUserTimeOver, dealTimeOver)))
-
 
         @self.app.after_request
         def after_request(response):
